@@ -1,0 +1,4 @@
+## Runtime configuration for the ssmash application.
+##
+core:
+  logging: WARN

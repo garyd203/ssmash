@@ -1,55 +1,57 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+""" Setup script for the ssmash application.
 
-"""The setup script."""
+"""
+from os import walk
+from pathlib import Path
 
-from setuptools import setup, find_packages
+from setuptools import find_packages
+from setuptools import setup
 
-with open('README.rst') as readme_file:
-    readme = readme_file.read()
 
-with open('HISTORY.rst') as history_file:
-    history = history_file.read()
-
-requirements = ['Click>=6.0', ]
-
-setup_requirements = ['pytest-runner', ]
-
-test_requirements = ['pytest', ]
-
-setup(
-    author="Gary Donovan",
-    author_email='gazza@gazza.id.au',
-    classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
-        'Natural Language :: English',
-        "Programming Language :: Python :: 2",
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-    ],
-    description="SSM AppConfig Storage Helper",
-    entry_points={
-        'console_scripts': [
-            'ssmash=ssmash.cli:main',
-        ],
+_config = {
+    "name": "ssmash",
+    "author": "GaryD",
+    "author_email": "gazza@gazza.id.au",
+    "url": "",
+    "package_dir": {"": "src"},
+    "packages": find_packages("src"),
+    "entry_points": {
+        "console_scripts": ("ssmash = ssmash.cli:main",),
     },
-    install_requires=requirements,
-    license="GNU General Public License v3",
-    long_description=readme + '\n\n' + history,
-    include_package_data=True,
-    keywords='ssmash',
-    name='ssmash',
-    packages=find_packages(include=['ssmash']),
-    setup_requires=setup_requirements,
-    test_suite='tests',
-    tests_require=test_requirements,
-    url='https://github.com/garyd203/ssmash',
-    version='0.1.0',
-    zip_safe=False,
-)
+    "data_files": ("etc/",),
+}
+
+
+def main():
+    """ Execute the setup command.
+
+    """
+    def data_files(*paths):
+        """ Expand path contents for the `data_files` config variable.  """
+        for path in map(Path, paths):
+            if path.is_dir():
+                for root, _, files in walk(str(path)):
+                    yield root, tuple(str(Path(root, name)) for name in files)
+            else:
+                yield str(path.parent), (str(path),)
+        return
+
+    def version():
+        """ Get the local package version. """
+        namespace = {}
+        path = Path("src", _config["name"], "__version__.py")
+        exec(path.read_text(), namespace)
+        return namespace["__version__"]
+
+    _config.update({
+        "data_files": list(data_files(*_config["data_files"])),
+        "version": version(),
+    })
+    setup(**_config)
+    return 0
+
+
+# Make the script executable.
+
+if __name__ == "__main__":
+    raise SystemExit(main())

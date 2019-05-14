@@ -1,41 +1,52 @@
-============================
-SSM AppConfig Storage Helper
-============================
+======
+ssmash
+======
+
+This is the ssmash application.
 
 
-.. image:: https://img.shields.io/pypi/v/ssmash.svg
-        :target: https://pypi.python.org/pypi/ssmash
+Minimum Requirements
+====================
 
-.. image:: https://img.shields.io/travis/garyd203/ssmash.svg
-        :target: https://travis-ci.org/garyd203/ssmash
-
-.. image:: https://readthedocs.org/projects/ssmash/badge/?version=latest
-        :target: https://ssmash.readthedocs.io/en/latest/?badge=latest
-        :alt: Documentation Status
+- Python 3.4
 
 
-.. image:: https://pyup.io/repos/github/garyd203/ssmash/shield.svg
-     :target: https://pyup.io/repos/github/garyd203/ssmash/
-     :alt: Updates
+Optional Requirements
+=====================
+
+.. _pytest: http://pytest.org
+.. _Sphinx: http://sphinx-doc.org
+
+- `pytest`_ (for running the test suite)
+- `Sphinx`_ (for generating documentation)
 
 
+Basic Setup
+===========
 
-SSM AppConfig Storage Helper
+Install for the current user:
+
+.. code-block:: console
+
+    $ python setup.py install --user
 
 
-* Free software: GNU General Public License v3
-* Documentation: https://ssmash.readthedocs.io.
+Run the application:
+
+.. code-block:: console
+
+    $ python -m ssmash --help
 
 
-Features
---------
+Run the test suite:
 
-* TODO
+.. code-block:: console
+   
+    $ pytest test/
 
-Credits
--------
 
-This package was created with Cookiecutter_ and the `audreyr/cookiecutter-pypackage`_ project template.
+Build documentation:
 
-.. _Cookiecutter: https://github.com/audreyr/cookiecutter
-.. _`audreyr/cookiecutter-pypackage`: https://github.com/audreyr/cookiecutter-pypackage
+.. code-block:: console
+
+    $ sphinx-build -b html doc doc/_build/html
