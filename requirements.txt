@@ -1,5 +1,0 @@
-## Python requirements for using the ssmash application.
-##
-##   pyhon -m pip install --requirement=requirements.txt
-##
-PyYAML>=3.11
