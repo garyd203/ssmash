@@ -8,13 +8,13 @@ Installation
 Stable release
 --------------
 
-To install SSM AppConfig Storage Helper, run this command in your terminal:
+To install ssmash, run this command in your terminal:
 
 .. code-block:: console
 
     $ pip install ssmash
 
-This is the preferred method to install SSM AppConfig Storage Helper, as it will always install the most recent stable release.
+This is the preferred method to install ssmash, as it will always install the most recent stable release.
 
 If you don't have `pip`_ installed, this `Python installation guide`_ can guide
 you through the process.
@@ -26,7 +26,7 @@ you through the process.
 From sources
 ------------
 
-The sources for SSM AppConfig Storage Helper can be downloaded from the `Github repo`_.
+The sources for ssmash can be downloaded from the `Github repo`_.
 
 You can either clone the public repository:
 

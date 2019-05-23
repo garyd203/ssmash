@@ -2,6 +2,6 @@
 Usage
 =====
 
-To use SSM AppConfig Storage Helper in a project::
+To use ssmash in a project::
 
     import ssmash
