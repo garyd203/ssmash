@@ -23,7 +23,7 @@ setup(
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+        "License :: OSI Approved :: GNU Affero General Public License v3",
         "Natural Language :: English",
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 2.7",
@@ -36,7 +36,7 @@ setup(
     description="SSM AppConfig Storage Helper",
     entry_points={"console_scripts": ["ssmash=ssmash.cli:main"]},
     install_requires=requirements,
-    license="GNU General Public License v3",
+    license="GNU Affero General Public License v3",
     long_description=readme + "\n\n" + history,
     include_package_data=True,
     keywords="ssmash",

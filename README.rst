@@ -23,7 +23,7 @@ SSM AppConfig Storage Helper
 SSM AppConfig Storage Helper
 
 
-* Free software: GNU General Public License v3
+* Free software: GNU Affero General Public License v3
 * Documentation: https://ssmash.readthedocs.io.
 
 
