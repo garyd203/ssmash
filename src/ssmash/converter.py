@@ -1,4 +1,5 @@
 """Tools for converting configuration into SSM Parameters."""
+from typing import Any
 
 from flyingcircus.core import Stack
 from flyingcircus.service.ssm import SSMParameter
@@ -18,6 +19,16 @@ def _create_params_from_dict(
         logical_name = "SSM" + key
         stack.Resources[logical_name] = SSMParameter(
             Properties=SSMParameterProperties(
-                Name=item_path, Type="String", Value=str(value)
+                Name=item_path, Type="String", Value=_get_parameter_value(value)
             )
         )
+
+
+def _get_parameter_value(value: Any) -> str:
+    """All single-value parameters should be stored as a string.
+
+    We normalise the outputs for some situations.
+    """
+    if isinstance(value, bool):
+        return str(value).lower()
+    return str(value)
