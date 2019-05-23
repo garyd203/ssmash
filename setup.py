@@ -11,7 +11,7 @@ with open("README.rst") as readme_file:
 with open("CHANGELOG.rst") as history_file:
     history = history_file.read()
 
-requirements = ["Click>=6.0", "PyYAML==5.1", "flying-circus==0.6.3"]
+requirements = ["Click>=6.0", "PyYAML==5.1", "flying-circus==0.6.3", "inflection==0.3.1"]
 
 setup_requirements = ["pytest-runner"]
 
