@@ -14,6 +14,10 @@ def _create_params_from_dict(
     appconfig: dict, stack: Stack, path_prefix: str = "/"
 ) -> None:
     for key, value in appconfig.items():
-        stack.Resources[key] = SSMParameter(
-            Properties=SSMParameterProperties(Name=key, Type="String", Value=str(value))
+        item_path = path_prefix + key
+        logical_name = "SSM" + key
+        stack.Resources[logical_name] = SSMParameter(
+            Properties=SSMParameterProperties(
+                Name=item_path, Type="String", Value=str(value)
+            )
         )

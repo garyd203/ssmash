@@ -26,8 +26,12 @@ class TestConvertHierarchyToSsm:
         convert_hierarchy_to_ssm({key: value}, stack)
 
         # Verify
-        param = stack.Resources[key]
+        logical_name, param = stack.Resources.popitem()
+
+        assert logical_name.startswith("SSM")
+        assert logical_name[3:] == key
+
         assert param.RESOURCE_TYPE == "AWS::SSM::Parameter"
-        assert param.Properties.Name == key
+        assert param.Properties.Name == "/" + key
         assert param.Properties.Type == "String"
         assert param.Properties.Value == value
