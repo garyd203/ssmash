@@ -15,14 +15,14 @@ SIMPLE_OUTPUT_LINE = "some example output line"  # FIXME
 
 def test_should_display_help():
     runner = CliRunner()
-    help_result = runner.invoke(cli.main, ["--help"])
+    help_result = runner.invoke(cli.create_stack, ["--help"])
     assert help_result.exit_code == 0
     assert "--help  Show this message and exit." in help_result.output
 
 
 def test_should_exit_cleanly_with_empty_input():
     runner = CliRunner()
-    result = runner.invoke(cli.main)
+    result = runner.invoke(cli.create_stack)
     assert result.exit_code == 0
     assert not result.stderr_bytes
 
@@ -30,7 +30,7 @@ def test_should_exit_cleanly_with_empty_input():
 def test_should_convert_simple_input_with_default_pipes():
     # Exercise
     runner = CliRunner()
-    result = runner.invoke(cli.main, input=SIMPLE_INPUT)
+    result = runner.invoke(cli.create_stack, input=SIMPLE_INPUT)
 
     # Verify
     assert result.exit_code == 0
@@ -49,7 +49,7 @@ def test_should_convert_simple_input_with_files():
             f.write(SIMPLE_INPUT)
 
         # Exercise
-        result = runner.invoke(cli.main, args=[input_filename, output_filename])
+        result = runner.invoke(cli.create_stack, args=[input_filename, output_filename])
 
         # Verify
         assert result.exit_code == 0
@@ -66,7 +66,7 @@ def test_output_should_contain_version():
 
     # Exercise
     runner = CliRunner()
-    result = runner.invoke(cli.main, input=SIMPLE_INPUT)
+    result = runner.invoke(cli.create_stack, input=SIMPLE_INPUT)
 
     # Verify
     cfn = yaml.safe_load(result.stdout)
@@ -82,7 +82,7 @@ def test_output_should_contain_timestamp():
     runner = CliRunner()
 
     with freeze_time(expected_time):
-        result = runner.invoke(cli.main, input=SIMPLE_INPUT)
+        result = runner.invoke(cli.create_stack, input=SIMPLE_INPUT)
 
     # Verify
     cfn = yaml.safe_load(result.stdout)

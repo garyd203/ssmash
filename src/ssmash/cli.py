@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""Convert settings in a plain YAML file to SSM parameters in a CloudFormation template."""
+"""Convert a plain YAML file with application configuration into a CloudFormation template with SSM parameters."""
 
 import sys
 
@@ -13,7 +13,7 @@ from flyingcircus.core import Stack
 @click.command(help=__doc__)
 @click.argument("input", type=click.File("r"), default="-")
 @click.argument("output", type=click.File("w"), default="-")
-def main(input, output):
+def create_stack(input, output):
     # Load source config
     config = yaml.safe_load(input)
 
@@ -35,4 +35,4 @@ def main(input, output):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(create_stack())

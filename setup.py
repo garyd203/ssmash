@@ -35,7 +35,7 @@ setup(
         "Topic :: System :: Systems Administration",
     ],
     description="SSM AppConfig Storage Helper",
-    entry_points={"console_scripts": ["ssmash=ssmash.cli:main"]},
+    entry_points={"console_scripts": ["ssmash=ssmash.cli:create_stack"]},
     install_requires=requirements,
     license="GNU Affero General Public License v3",
     long_description=readme + "\n\n" + history,
