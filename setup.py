@@ -43,7 +43,9 @@ setup(
     keywords="ssmash application-configuration configuration AWS cloudformation infrastructure-as-code",
     metadata_version="2.1",
     name="ssmash",
+    package_dir={'': 'src'},
     packages=find_packages(include=["ssmash"]),
+    # packages=find_packages(where="src"),  # FIXME do we need this?
     project_urls={
         "Documentation": "https://ssmash.readthedocs.io/en/latest/",
         "Source": "https://github.com/garyd203/ssmash",
