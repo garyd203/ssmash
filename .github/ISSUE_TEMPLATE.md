@@ -1,4 +1,6 @@
-* SSM AppConfig Storage Helper version:
+### Bug Report
+
+* ssmash version:
 * Python version:
 * Operating System:
 
