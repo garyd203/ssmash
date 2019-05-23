@@ -1,17 +1,37 @@
 # -*- coding: utf-8 -*-
 
-"""Console script for ssmash."""
+"""Convert settings in a plain YAML file to SSM parameters in a CloudFormation template."""
 
 import sys
+
 import click
+from datetime import datetime, timezone
+import yaml
+from flyingcircus.core import Stack
 
 
-@click.command()
-def main(args=None):
-    """Console script for ssmash."""
-    click.echo("Replace this message by putting your code into " "ssmash.cli.main")
-    click.echo("See click documentation at http://click.pocoo.org/")
-    return 0
+@click.command(help=__doc__)
+@click.argument("input", type=click.File("r"), default="-")
+@click.argument("output", type=click.File("w"), default="-")
+def main(input, output):
+    # Load source config
+    config = yaml.safe_load(input)
+
+    # Create stack
+    stack = Stack(Description="")  # FIXME desc
+
+    from . import __version__
+
+    stack.Metadata["ssmash"] = {
+        "generated_timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "version": __version__,
+    }
+
+    # FIXME Traverse config hierarchy
+    # create_params_for_dict(stack, config, "/")
+
+    # Write YAML to the specified file
+    output.write(stack.export("yaml"))
 
 
 if __name__ == "__main__":

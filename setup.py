@@ -11,7 +11,7 @@ with open("README.rst") as readme_file:
 with open("CHANGELOG.rst") as history_file:
     history = history_file.read()
 
-requirements = ["Click>=6.0"]
+requirements = ["Click>=6.0", "PyYAML==5.1", "flying-circus==0.6.3"]
 
 setup_requirements = ["pytest-runner"]
 
@@ -43,9 +43,8 @@ setup(
     keywords="ssmash application-configuration configuration AWS cloudformation infrastructure-as-code",
     metadata_version="2.1",
     name="ssmash",
-    package_dir={'': 'src'},
-    packages=find_packages(include=["ssmash"]),
-    # packages=find_packages(where="src"),  # FIXME do we need this?
+    package_dir={"": "src"},
+    packages=find_packages(where="src", include=["ssmash"]),
     project_urls={
         "Documentation": "https://ssmash.readthedocs.io/en/latest/",
         "Source": "https://github.com/garyd203/ssmash",
