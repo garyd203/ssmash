@@ -13,7 +13,13 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Changed
 -------
 
+1.0.0 (2019-05-24)
+==================
+
+Added
+-----
 * Remove unwanted Cookiecutter output
+* Implement script to create String SSM Parameters from a simple config file stored in YAML
 
 0.1.0 (2019-05-14)
 ==================
