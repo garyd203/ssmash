@@ -34,7 +34,7 @@ def create_stack(input, output, description: str):
     # Create stack
     stack = Stack(Description=description)
 
-    from . import __version__
+    from ssmash import __version__
 
     stack.Metadata["ssmash"] = {
         "generated_timestamp": datetime.now(tz=timezone.utc).isoformat(),
