@@ -8,6 +8,7 @@ from hypothesis import given
 
 from ssmash.converter import convert_hierarchy_to_ssm
 from .strategies import aws_logical_name_strategy
+from .strategies import parameter_name_strategy
 
 LOGICAL_NAME_RE = re.compile(r"[a-z0-9]+", re.I)
 PARAMETER_NAME_RE = re.compile(r"[a-z0-9_./-]+", re.I)
@@ -16,11 +17,17 @@ PARAMETER_NAME_RE = re.compile(r"[a-z0-9_./-]+", re.I)
 class TestConvertHierarchyToSsm:
     """Tests for convert_hierarchy_to_ssm."""
 
-    # TODO tests
-    #   handle name clashes
-    #   value is a set/list/iterable
+    def _verify_stack_has_parameter(
+        self, stack: Stack, path: str, value: str, logical_name: str = None
+    ):
+        # If we know the logical name, then just get the resource directly
+        if logical_name:
+            assert logical_name in stack.Resources
+            assert stack.Resources[logical_name].Properties.Name == path
+            assert stack.Resources[logical_name].Properties.Value == value
+            return
 
-    def _verify_stack_has_parameter(self, stack: Stack, path: str, value: str):
+        # Otherwise search for the Parameter by path
         params = {
             param.Properties.Name: param.Properties.Value
             for param in stack.Resources.values()
@@ -71,8 +78,20 @@ class TestConvertHierarchyToSsm:
         with pytest.raises(ValueError, match="(null|None)"):
             convert_hierarchy_to_ssm({"some_key": None}, stack)
 
-    @given(st.text(min_size=1))
-    def test_should_clean_names(self, key):
+    @pytest.mark.parametrize("name", ["some?value", "some/value"])
+    def test_should_throw_error_for_invalid_parameter_name(self, name):
+        # Setup
+        appconfig = {name: "aaa"}
+        stack = Stack()
+
+        # Exercise
+        with pytest.raises(
+            ValueError, match="invalid.*{}".format(name.replace("?", r"\?"))
+        ):
+            convert_hierarchy_to_ssm(appconfig, stack)
+
+    @given(parameter_name_strategy())
+    def test_should_clean_logical_names(self, key):
         # Setup
         stack = Stack()
 
@@ -114,4 +133,44 @@ class TestConvertHierarchyToSsm:
         self._verify_stack_has_parameter(stack, "/top_dict/middle_value", "bbb")
         self._verify_stack_has_parameter(
             stack, "/top_dict/middle_dict/bottom_value", "ccc"
+        )
+
+    def test_should_deterministically_handle_name_clashes_from_cleaned_logical_names(
+        self
+    ):
+        # Setup
+        appconfig = {
+            "some": {"value": "eee"},
+            "some-Value": "ccc",
+            "some.Value": "ddd",
+            "some_value": "aaa",
+            "some_value_dupe": "fff",
+            "someValue": "bbb",
+        }
+
+        stack = Stack()
+
+        # Exercise
+        convert_hierarchy_to_ssm(appconfig, stack)
+
+        # Verify
+        assert (
+            len(stack.Resources) == 6
+        ), "6 parameter values should be stored from this input"
+
+        self._verify_stack_has_parameter(stack, "/some/value", "eee", "SSMSomeValue")
+        self._verify_stack_has_parameter(
+            stack, "/some-Value", "ccc", "SSMSomeValueDupe"
+        )
+        self._verify_stack_has_parameter(
+            stack, "/some.Value", "ddd", "SSMSomeValueDupeDupe"
+        )
+        self._verify_stack_has_parameter(
+            stack, "/some_value", "aaa", "SSMSomeValueDupeDupeDupe"
+        )
+        self._verify_stack_has_parameter(
+            stack, "/some_value_dupe", "fff", "SSMSomeValueDupeDupeDupeDupe"
+        )
+        self._verify_stack_has_parameter(
+            stack, "/someValue", "bbb", "SSMSomeValueDupeDupeDupeDupeDupe"
         )

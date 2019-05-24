@@ -13,3 +13,12 @@ def aws_logical_name_strategy(draw):
             st.text("abcdefghijklmnnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"),
         )
     )
+
+
+@st.composite
+def parameter_name_strategy(draw):
+    """A strategy that produces a valid parameter name component."""
+    return draw(
+        # NB: No "/", but otherwise it's the character set for a SSM Parameter Name
+        st.from_regex(r"[a-zA-Z0-9_.-]+", fullmatch=True)
+    )

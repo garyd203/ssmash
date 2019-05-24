@@ -1,5 +1,5 @@
 """Tools for converting configuration into SSM Parameters."""
-import logging
+
 import re
 from typing import Any
 
@@ -7,8 +7,6 @@ import inflection
 from flyingcircus.core import Stack
 from flyingcircus.service.ssm import SSMParameter
 from flyingcircus.service.ssm import SSMParameterProperties
-
-LOGGER = logging.getLogger(__file__)
 
 #: RegEx to match `invalid characters
 #: <https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html#resources-section-structure-logicalid>`_
@@ -32,7 +30,7 @@ def create_params_from_dict(
     stack: Stack, appconfig: dict, path_prefix: str = "/"
 ) -> None:
     for key, value in appconfig.items():
-        key = _clean_path_component(key)
+        _check_path_component_is_valid(key)
         item_path = path_prefix + key
 
         # Nested dictionaries form a parameter hierarchy
@@ -42,6 +40,7 @@ def create_params_from_dict(
 
         # Plain values should be stored as a string parameter
         logical_name = "SSM" + _clean_logical_name(item_path)
+        logical_name = _dedupe_logical_name(stack, logical_name)
         stack.Resources[logical_name] = SSMParameter(
             Properties=SSMParameterProperties(
                 Name=item_path, Type="String", Value=_get_parameter_value(value)
@@ -49,14 +48,14 @@ def create_params_from_dict(
         )
 
 
-def _clean_path_component(component: str) -> str:
-    """Remove unsupported characters from a component of SSM parameter path."""
-    result = INVALID_SSM_PARAMETER_COMPONENT_RE.sub("_", component)
-    if not result.strip("_.-"):
-        # Parameter name contains no sensible characters. Substitute in a placeholder name
-        result = "_symbols_only_"
-        LOGGER.warning("Parameter name contains no valid characters: '%s'", component)
-    return result
+def _check_path_component_is_valid(component: str):
+    """Check that this configuration key is valid to use as a component of a SSM Parameter Path.
+
+    We don't want to alter provided configuration names, so we raise an error
+    if they can't be used as-is.
+    """
+    if INVALID_SSM_PARAMETER_COMPONENT_RE.search(component):
+        raise ValueError(f"Configuration has invalid key: {component}")
 
 
 def _clean_logical_name(name: str) -> str:
@@ -74,6 +73,15 @@ def _clean_logical_name(name: str) -> str:
     # Turn into a CamelCase version using the underscores as word separators
     result = inflection.camelize(result)
 
+    return result
+
+
+def _dedupe_logical_name(stack: Stack, logical_name: str) -> str:
+    """Create a unique logical name."""
+    # We simply add a suffix to the existing name, if there is a conflict
+    result = logical_name
+    while result in stack.Resources:
+        result += "Dupe"
     return result
 
 
