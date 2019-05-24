@@ -13,16 +13,16 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Changed
 ~~~~~~~
 
-1.0.0 (2019-05-24)
-------------------
+v1.0.0 (2019-05-24)
+-------------------
 
 Added
 ~~~~~
 * ``ssmash`` script to create String SSM Parameters from a simple config file stored in YAML
 * Basic documentation in README
 
-0.1.0 (2019-05-14)
-------------------
+v0.1.0 (2019-05-14)
+-------------------
 
 Added
 ~~~~~
