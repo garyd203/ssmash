@@ -18,7 +18,7 @@ class TestBasicCLI:
         runner = CliRunner()
         help_result = runner.invoke(cli.create_stack, ["--help"])
         assert help_result.exit_code == 0
-        assert "--help  Show this message and exit." in help_result.output
+        assert "--help              Show this message and exit." in help_result.output
 
     def test_should_exit_cleanly_with_empty_input(self):
         runner = CliRunner()
@@ -28,6 +28,18 @@ class TestBasicCLI:
 
 
 class TestCloudFormationMetadata:
+    def test_stack_should_have_description(self):
+        # Setup
+        description = "Some lengthy text"
+
+        # Exercise
+        runner = CliRunner()
+        result = runner.invoke(cli.create_stack, args=["--description", description])
+
+        # Verify
+        cfn = yaml.safe_load(result.stdout)
+        assert cfn["Description"] == description
+
     def test_output_should_contain_version(self):
         from ssmash import __version__ as package_version
 

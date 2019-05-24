@@ -3,9 +3,10 @@
 """Convert a plain YAML file with application configuration into a CloudFormation template with SSM parameters."""
 
 import sys
+from datetime import datetime
+from datetime import timezone
 
 import click
-from datetime import datetime, timezone
 import yaml
 from flyingcircus.core import Stack
 
@@ -15,7 +16,13 @@ from ssmash.converter import convert_hierarchy_to_ssm
 @click.command(help=__doc__)
 @click.argument("input", type=click.File("r"), default="-")
 @click.argument("output", type=click.File("w"), default="-")
-def create_stack(input, output):
+@click.option(
+    "--description",
+    type=str,
+    default="Application configuration",
+    help="The description for the CloudFormation stack.",
+)
+def create_stack(input, output, description: str):
     # Load source config
     #
     # Note that PyYAML returns None for an empty file, rather than an empty
@@ -25,7 +32,7 @@ def create_stack(input, output):
         appconfig = {}
 
     # Create stack
-    stack = Stack(Description="")  # FIXME desc
+    stack = Stack(Description=description)
 
     from . import __version__
 
