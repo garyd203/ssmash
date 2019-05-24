@@ -84,4 +84,6 @@ def _get_parameter_value(value: Any) -> str:
     """
     if isinstance(value, bool):
         return str(value).lower()
+    if value is None:
+        raise ValueError("Cannot store null values in SSM Parameter Store")
     return str(value)

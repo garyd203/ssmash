@@ -18,7 +18,6 @@ class TestConvertHierarchyToSsm:
 
     # TODO tests
     #   handle name clashes
-    #   cant have null value
     #   value is a set/list/iterable
 
     def _verify_stack_has_parameter(self, stack: Stack, path: str, value: str):
@@ -64,6 +63,13 @@ class TestConvertHierarchyToSsm:
         _, param = stack.Resources.popitem()
         assert param.Properties.Type == "String"
         assert param.Properties.Value == expected
+
+    def test_should_throw_error_for_none_value(self):
+        stack = Stack()
+
+        # Exercise
+        with pytest.raises(ValueError, match="(null|None)"):
+            convert_hierarchy_to_ssm({"some_key": None}, stack)
 
     @given(st.text(min_size=1))
     def test_should_clean_names(self, key):
