@@ -18,7 +18,7 @@ Changed
 
 Added
 ~~~~~
-* `ssmash` script to create String SSM Parameters from a simple config file stored in YAML
+* ``ssmash`` script to create String SSM Parameters from a simple config file stored in YAML
 * Basic documentation in README
 
 0.1.0 (2019-05-14)
