@@ -6,10 +6,21 @@ ssmash
 .. image:: https://img.shields.io/pypi/v/ssmash.svg
         :target: https://pypi.python.org/pypi/ssmash
 
+.. image:: https://img.shields.io/pypi/pyversions/ssmash.svg
+        :target: https://pypi.python.org/pypi/ssmash
+        :alt: Python versions
+
 .. image:: https://readthedocs.org/projects/ssmash/badge/?version=latest
         :target: https://ssmash.readthedocs.io/en/latest/?badge=latest
         :alt: Documentation Status
 
+.. image:: https://img.shields.io/pypi/dm/ssmash.svg
+        :target: https://pypi.python.org/pypi/ssmash
+        :alt: Downloads
+
+.. image:: https://img.shields.io/badge/code%20style-black-000000.svg
+        :target: https://github.com/ambv/black
+        :alt: Code style: black
 
 `ssmash <https://ssmash.readthedocs.io>`_, the SSM AppConfig Storage Helper,
 is an easy-to-use application configuration management tool for AWS
