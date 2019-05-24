@@ -25,15 +25,22 @@ INVALID_SSM_PARAMETER_COMPONENT_RE = re.compile(r"[^a-zA-Z0-9_.-]")
 
 def convert_hierarchy_to_ssm(appconfig: dict, stack: Stack) -> None:
     """Convert a hierarchical nested dictionary into SSM Parameters."""
-    create_params_from_dict(appconfig, stack)
+    create_params_from_dict(stack, appconfig)
 
 
 def create_params_from_dict(
-    appconfig: dict, stack: Stack, path_prefix: str = "/"
+    stack: Stack, appconfig: dict, path_prefix: str = "/"
 ) -> None:
     for key, value in appconfig.items():
         key = _clean_path_component(key)
         item_path = path_prefix + key
+
+        # Nested dictionaries form a parameter hierarchy
+        if isinstance(value, dict):
+            create_params_from_dict(stack, value, item_path + "/")
+            continue
+
+        # Plain values should be stored as a string parameter
         logical_name = "SSM" + _clean_logical_name(item_path)
         stack.Resources[logical_name] = SSMParameter(
             Properties=SSMParameterProperties(
