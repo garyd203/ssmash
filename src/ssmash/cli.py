@@ -42,7 +42,9 @@ def create_stack(input, output, description: str):
     }
 
     # Create a parameter for each element in the config hierarchy.
-    convert_hierarchy_to_ssm(appconfig, stack)
+    stack.merge_stack(
+        convert_hierarchy_to_ssm(appconfig).with_prefixed_names("SSMParam")
+    )
 
     # Write YAML to the specified file
     output.write(stack.export("yaml"))

@@ -41,16 +41,13 @@ class TestConvertHierarchyToSsm:
     def test_should_create_parameter_resource_for_single_top_level_item(
         self, key, value
     ):
-        stack = Stack()
-
         # Exercise
-        convert_hierarchy_to_ssm({key: value}, stack)
+        stack = convert_hierarchy_to_ssm({key: value})
 
         # Verify
         logical_name, param = stack.Resources.popitem()
 
-        assert logical_name.startswith("SSM")
-        assert logical_name[3:].lower() == key.lower()
+        assert logical_name.lower() == key.lower()
 
         assert param.RESOURCE_TYPE == "AWS::SSM::Parameter"
         assert param.Properties.Name == "/" + key
@@ -61,10 +58,8 @@ class TestConvertHierarchyToSsm:
         ("value", "expected"), [(0, "0"), (True, "true"), (False, "false")]
     )
     def test_should_store_any_primitive_as_a_string(self, value, expected):
-        stack = Stack()
-
         # Exercise
-        convert_hierarchy_to_ssm({"some_key": value}, stack)
+        stack = convert_hierarchy_to_ssm({"some_key": value})
 
         # Verify
         _, param = stack.Resources.popitem()
@@ -72,31 +67,22 @@ class TestConvertHierarchyToSsm:
         assert param.Properties.Value == expected
 
     def test_should_throw_error_for_none_value(self):
-        stack = Stack()
-
         # Exercise
         with pytest.raises(ValueError, match="(null|None)"):
-            convert_hierarchy_to_ssm({"some_key": None}, stack)
+            convert_hierarchy_to_ssm({"some_key": None})
 
     @pytest.mark.parametrize("name", ["some?value", "some/value"])
     def test_should_throw_error_for_invalid_parameter_name(self, name):
-        # Setup
-        appconfig = {name: "aaa"}
-        stack = Stack()
-
         # Exercise
         with pytest.raises(
             ValueError, match="invalid.*{}".format(name.replace("?", r"\?"))
         ):
-            convert_hierarchy_to_ssm(appconfig, stack)
+            convert_hierarchy_to_ssm({name: "aaa"})
 
     @given(parameter_name_strategy())
     def test_should_clean_logical_names(self, key):
-        # Setup
-        stack = Stack()
-
         # Exercise
-        convert_hierarchy_to_ssm({key: "some_value"}, stack)
+        stack = convert_hierarchy_to_ssm({key: "some_value"})
 
         # Verify
         logical_name, param = stack.Resources.popitem()
@@ -119,10 +105,8 @@ class TestConvertHierarchyToSsm:
             "top_dict": {"middle_value": "bbb", "middle_dict": {"bottom_value": "ccc"}},
         }
 
-        stack = Stack()
-
         # Exercise
-        convert_hierarchy_to_ssm(appconfig, stack)
+        stack = convert_hierarchy_to_ssm(appconfig)
 
         # Verify
         assert (
@@ -148,29 +132,25 @@ class TestConvertHierarchyToSsm:
             "someValue": "bbb",
         }
 
-        stack = Stack()
-
         # Exercise
-        convert_hierarchy_to_ssm(appconfig, stack)
+        stack = convert_hierarchy_to_ssm(appconfig)
 
         # Verify
         assert (
             len(stack.Resources) == 6
         ), "6 parameter values should be stored from this input"
 
-        self._verify_stack_has_parameter(stack, "/some/value", "eee", "SSMSomeValue")
+        self._verify_stack_has_parameter(stack, "/some/value", "eee", "SomeValue")
+        self._verify_stack_has_parameter(stack, "/some-Value", "ccc", "SomeValueDupe")
         self._verify_stack_has_parameter(
-            stack, "/some-Value", "ccc", "SSMSomeValueDupe"
+            stack, "/some.Value", "ddd", "SomeValueDupeDupe"
         )
         self._verify_stack_has_parameter(
-            stack, "/some.Value", "ddd", "SSMSomeValueDupeDupe"
+            stack, "/some_value", "aaa", "SomeValueDupeDupeDupe"
         )
         self._verify_stack_has_parameter(
-            stack, "/some_value", "aaa", "SSMSomeValueDupeDupeDupe"
+            stack, "/some_value_dupe", "fff", "SomeValueDupeDupeDupeDupe"
         )
         self._verify_stack_has_parameter(
-            stack, "/some_value_dupe", "fff", "SSMSomeValueDupeDupeDupeDupe"
-        )
-        self._verify_stack_has_parameter(
-            stack, "/someValue", "bbb", "SSMSomeValueDupeDupeDupeDupeDupe"
+            stack, "/someValue", "bbb", "SomeValueDupeDupeDupeDupeDupe"
         )

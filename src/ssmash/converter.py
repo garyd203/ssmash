@@ -21,9 +21,11 @@ INVALID_LOGICAL_NAME_RE = re.compile(r"[^a-zA-Z0-9]+")
 INVALID_SSM_PARAMETER_COMPONENT_RE = re.compile(r"[^a-zA-Z0-9_.-]")
 
 
-def convert_hierarchy_to_ssm(appconfig: dict, stack: Stack) -> None:
+def convert_hierarchy_to_ssm(appconfig: dict) -> Stack:
     """Convert a hierarchical nested dictionary into SSM Parameters."""
+    stack = Stack(Description="SSM Parameters")
     create_params_from_dict(stack, appconfig)
+    return stack
 
 
 def create_params_from_dict(
@@ -39,7 +41,7 @@ def create_params_from_dict(
             continue
 
         # Plain values should be stored as a string parameter
-        logical_name = "SSM" + _clean_logical_name(item_path)
+        logical_name = _clean_logical_name(item_path)
         logical_name = _dedupe_logical_name(stack, logical_name)
         stack.Resources[logical_name] = SSMParameter(
             Properties=SSMParameterProperties(
@@ -67,8 +69,12 @@ def _clean_logical_name(name: str) -> str:
     # Separate existing camelized words with underscore
     result = inflection.underscore(name)
 
-    # Replace invalid characters with underscore
+    # Replace invalid characters with no more than 1 underscore
     result = INVALID_LOGICAL_NAME_RE.sub("_", result).strip("_")
+    if not result:
+        # There are no valid characters in the name, so we substitute in
+        # some placeholder text that is valid
+        result = "SymbolsOnly"
 
     # Turn into a CamelCase version using the underscores as word separators
     result = inflection.camelize(result)
