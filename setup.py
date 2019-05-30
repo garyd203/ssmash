@@ -21,7 +21,7 @@ setup(
     author="Gary Donovan",
     author_email="gazza@gazza.id.au",
     classifiers=[
-        "Development Status :: 2 - Pre-Alpha",
+        "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: GNU Affero General Public License v3",
@@ -54,6 +54,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/garyd203/ssmash",
-    version="1.0.0-rc1",
+    version="1.0.0",
     zip_safe=False,
 )
