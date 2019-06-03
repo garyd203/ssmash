@@ -1,14 +1,16 @@
 --editable .
 black==19.3b0
 bumpversion==0.5.3
-flying-circus==0.6.3
+flying-circus==0.6.5
 freezegun==0.3.10
 hypothesis==4.23.6
 inflection==0.3.1
 pytest==3.8.2
 pytest-runner==4.2
+#TODO pytest-hammertime
 PyYAML==5.1
 semver==2.8.1
 Sphinx==1.8.1
 tox==3.5.2
 twine==1.12.1
+#FIXME be more lenient about versions

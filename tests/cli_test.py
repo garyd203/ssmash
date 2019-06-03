@@ -1,13 +1,20 @@
 """Tests for the command line interface."""
 
-from datetime import datetime, timezone
+from contextlib import contextmanager
+from datetime import datetime
+from datetime import timezone
+from unittest.mock import ANY
+from unittest.mock import patch
 
+import pytest
 import semver
 import yaml
 from click.testing import CliRunner
+from flyingcircus.intrinsic_function import ImportValue
 from freezegun import freeze_time
 
 from ssmash import cli
+from ssmash.invalidation import create_ecs_service_invalidation_stack
 
 SIMPLE_INPUT = """foo: bar"""
 SIMPLE_OUTPUT_LINE = "Name: /foo"
@@ -18,7 +25,10 @@ class TestBasicCLI:
         runner = CliRunner()
         help_result = runner.invoke(cli.create_stack, ["--help"])
         assert help_result.exit_code == 0
-        assert "--help              Show this message and exit." in help_result.output
+        assert (
+            "--help                          Show this message and exit."
+            in help_result.output
+        )
 
     def test_should_exit_cleanly_with_empty_input(self):
         runner = CliRunner()
@@ -102,3 +112,111 @@ class TestCloudFormationIsProduced:
             with open(output_filename, "r") as f:
                 actual_output = f.read()
             assert SIMPLE_OUTPUT_LINE in actual_output
+
+
+class TestEcsServiceInvalidation:
+    @staticmethod
+    @contextmanager
+    def patch_create_invalidation_stack():
+        # Note that we patch the object imported into the `cli` module, not
+        # the original function definition in the `invalidation` module
+        with patch(
+            "ssmash.cli.create_ecs_service_invalidation_stack",
+            wraps=create_ecs_service_invalidation_stack,
+        ) as mocked:
+            yield mocked
+
+    def run_script_with_invalidation_params(self, cluster, service, role):
+        """Execute script with simple input, and ECS service invalidation."""
+        args = []
+        if cluster or service:
+            args.append("--invalidate-ecs-service")
+            if cluster:
+                args.append(cluster)
+            if service:
+                args.append(service)
+        if role:
+            args.append("--invalidation-role")
+            args.append(role)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli.create_stack, input=SIMPLE_INPUT, args=args, catch_exceptions=False
+        )
+        return result
+
+    def test_should_call_invalidation_helper_and_have_parameters_in_output(self):
+        # Setup
+        cluster = "arn:cluster"
+        service = "arn:service"
+        role = "arn:role"
+
+        # Exercise
+        with self.patch_create_invalidation_stack() as invalidation_mock:
+            result = self.run_script_with_invalidation_params(cluster, service, role)
+
+        # Verify
+        invalidation_mock.assert_called_with(
+            cluster=cluster, service=service, dependencies=ANY, restart_role=role
+        )
+
+        assert cluster in result.stdout
+        assert service in result.stdout
+        assert role in result.stdout
+
+    def test_should_dereference_cloudformation_imports(self):
+        # Setup
+        cluster_export = "some-cluster-export"
+        service_export = "some-service-export"
+        role_export = "some-role-export"
+
+        cluster_cli_param = "!ImportValue:" + cluster_export
+        service_cli_param = "!ImportValue:" + service_export
+        role_cli_param = "!ImportValue:" + role_export
+
+        # Exercise
+        with self.patch_create_invalidation_stack() as invalidation_mock:
+            self.run_script_with_invalidation_params(
+                cluster_cli_param, service_cli_param, role_cli_param
+            )
+
+        # Verify
+        invalidation_mock.assert_called_with(
+            cluster=ImportValue(cluster_export),
+            service=ImportValue(service_export),
+            dependencies=ANY,
+            restart_role=ImportValue(role_export),
+        )
+
+    def test_should_ignore_role_if_service_not_specified(self):
+        # Exercise
+        with self.patch_create_invalidation_stack() as invalidation_mock:
+            self.run_script_with_invalidation_params(None, None, "arn:role")
+
+        # Verify
+        invalidation_mock.assert_not_called()
+
+    def test_should_error_if_role_not_specified(self):
+        # Exercise
+        with self.patch_create_invalidation_stack() as invalidation_mock:
+            result = self.run_script_with_invalidation_params(
+                "arn:cluster", "arn:service", None
+            )
+
+        # Verify
+        assert result.exit_code != 0
+        invalidation_mock.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ("cluster", "service"), [(None, "arn:service"), ("arn:cluster", None)]
+    )
+    def test_should_error_if_cluster_and_service_not_specified(self, cluster, service):
+        # Exercise
+        with self.patch_create_invalidation_stack() as invalidation_mock:
+            result = self.run_script_with_invalidation_params(
+                cluster, service, "arn:role"
+            )
+
+        # Verify
+        assert result.exit_code != 0
+        invalidation_mock.assert_not_called()
