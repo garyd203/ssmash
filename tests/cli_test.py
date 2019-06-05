@@ -1,5 +1,5 @@
 """Tests for the command line interface."""
-
+import re
 from contextlib import contextmanager
 from datetime import datetime
 from datetime import timezone
@@ -24,10 +24,13 @@ class TestBasicCLI:
     def test_should_display_help(self):
         runner = CliRunner()
         help_result = runner.invoke(cli.create_stack, ["--help"])
+
         assert help_result.exit_code == 0
-        assert (
-            "--help                          Show this message and exit."
-            in help_result.output
+        assert re.search(r"--help +Show this message and exit", help_result.output)
+        assert re.search(
+            r"Convert.*YAML.*application\s+configuration.*CloudFormation.*SSM\s+parameter",
+            help_result.output,
+            re.DOTALL | re.I,
         )
 
     def test_should_exit_cleanly_with_empty_input(self):
