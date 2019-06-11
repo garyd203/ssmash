@@ -18,6 +18,10 @@ from flyingcircus.service.ssm import SSMParameter
 from ssmash.converter import convert_hierarchy_to_ssm
 from ssmash.invalidation import create_ecs_service_invalidation_stack
 
+# TODO move helper functions to another module
+# TODO tests for helper functions
+
+
 #: Prefix for specifying a CloudFormation import as a CLI parameter
 CFN_IMPORT_PREFIX = "!ImportValue:"
 
@@ -68,33 +72,16 @@ def create_stack(
     invalidate_ecs_service: Tuple[str, str],
     invalidation_role: str,
 ):
-    # Load source config
-    #
-    # Note that PyYAML returns None for an empty file, rather than an empty
-    # dictionary
-    appconfig = yaml.safe_load(input)
-    if appconfig is None:
-        appconfig = {}
+    appconfig = _load_appconfig_from_yaml(input)
+    stack = _initialise_stack(description)
 
-    # Create stack
-    stack = Stack(Description=description)
-
-    from ssmash import __version__
-
-    stack.Metadata["ssmash"] = {
-        "generated_timestamp": datetime.now(tz=timezone.utc).isoformat(),
-        "version": __version__,
-    }
-
-    # Create a parameter for each element in the config hierarchy.
-    ssm_stack = convert_hierarchy_to_ssm(appconfig)
-    stack.merge_stack(ssm_stack.with_prefixed_names("SSMParam"))
+    _create_ssm_parameters(appconfig, stack)
 
     # Re-deploy the specified ECS service
     if invalidate_ecs_service:
         ecs_cluster, ecs_service = invalidate_ecs_service
-        ecs_cluster = dereference_cfn_import_maybe(ecs_cluster)
-        ecs_service = dereference_cfn_import_maybe(ecs_service)
+        ecs_cluster = _dereference_cfn_import_maybe(ecs_cluster)
+        ecs_service = _dereference_cfn_import_maybe(ecs_service)
 
         if not invalidation_role:
             raise click.UsageError(
@@ -106,30 +93,63 @@ def create_stack(
                 cluster=ecs_cluster,
                 service=ecs_service,
                 dependencies=[
-                    r
-                    for r in ssm_stack.Resources.values()
-                    if isinstance(r, SSMParameter)
+                    r for r in stack.Resources.values() if isinstance(r, SSMParameter)
                 ],
-                restart_role=dereference_cfn_import_maybe(invalidation_role),
+                restart_role=_dereference_cfn_import_maybe(invalidation_role),
             ).with_prefixed_names("InvalidateEcs")
         )
 
     # Write YAML to the specified file
-    output.write(stack.export("yaml"))
+    _write_cfn_template(output, appconfig, stack)
 
 
-def dereference_cfn_import_maybe(
+def _create_ssm_parameters(appconfig: dict, stack: Stack):
+    """Create SSM parameters for every item in the application configuration"""
+    stack.merge_stack(
+        convert_hierarchy_to_ssm(appconfig).with_prefixed_names("SSMParam")
+    )
+
+
+def _dereference_cfn_import_maybe(
     ref: Optional[str]
 ) -> Optional[Union[str, ImportValue]]:
     """Convert a command line parameter into a CloudFormation import, if necessary."""
-    # TODO move to another module
-    # TODO tests
     if not ref:
         return None
     if ref.startswith(CFN_IMPORT_PREFIX):
         export_name = ref[len(CFN_IMPORT_PREFIX) :]
         return ImportValue(export_name)
     return ref
+
+
+def _initialise_stack(description: str) -> Stack:
+    """Create a basic Flying Circus stack, customised for ssmash"""
+    stack = Stack(Description=description)
+
+    from ssmash import __version__
+
+    stack.Metadata["ssmash"] = {
+        "generated_timestamp": datetime.now(tz=timezone.utc).isoformat(),
+        "version": __version__,
+    }
+    return stack
+
+
+def _load_appconfig_from_yaml(input) -> dict:
+    """Load a YAML description of the application configuration"""
+    appconfig = yaml.safe_load(input)
+
+    # Note that PyYAML returns None for an empty file, rather than an empty
+    # dictionary
+    if appconfig is None:
+        appconfig = {}
+
+    return appconfig
+
+
+def _write_cfn_template(output, appconfig: dict, stack: Stack):
+    """Write the CloudFormation template"""
+    output.write(stack.export("yaml"))
 
 
 if __name__ == "__main__":
