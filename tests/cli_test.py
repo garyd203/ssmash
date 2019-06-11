@@ -35,7 +35,7 @@ class TestBasicCLI:
 
     def test_should_exit_cleanly_with_empty_input(self):
         runner = CliRunner()
-        result = runner.invoke(cli.create_stack)
+        result = runner.invoke(cli.create_stack, args=["-"])
         assert result.exit_code == 0
         assert not result.stderr_bytes
 
@@ -47,7 +47,9 @@ class TestCloudFormationMetadata:
 
         # Exercise
         runner = CliRunner()
-        result = runner.invoke(cli.create_stack, args=["--description", description])
+        result = runner.invoke(
+            cli.create_stack, args=["-", "--description", description]
+        )
 
         # Verify
         cfn = yaml.safe_load(result.stdout)
@@ -58,7 +60,7 @@ class TestCloudFormationMetadata:
 
         # Exercise
         runner = CliRunner()
-        result = runner.invoke(cli.create_stack, input=SIMPLE_INPUT)
+        result = runner.invoke(cli.create_stack, args=["-"])
 
         # Verify
         cfn = yaml.safe_load(result.stdout)
@@ -73,7 +75,7 @@ class TestCloudFormationMetadata:
         runner = CliRunner()
 
         with freeze_time(expected_time):
-            result = runner.invoke(cli.create_stack, input=SIMPLE_INPUT)
+            result = runner.invoke(cli.create_stack, args=["-"])
 
         # Verify
         cfn = yaml.safe_load(result.stdout)
@@ -82,10 +84,18 @@ class TestCloudFormationMetadata:
 
 
 class TestCloudFormationIsProduced:
-    def test_should_convert_simple_input_with_default_pipes(self):
+    def test_should_error_if_input_file_is_not_specified(self):
         # Exercise
         runner = CliRunner()
         result = runner.invoke(cli.create_stack, input=SIMPLE_INPUT)
+
+        # Verify
+        assert result.exit_code != 0
+
+    def test_should_convert_simple_input_with_default_pipes(self):
+        # Exercise
+        runner = CliRunner()
+        result = runner.invoke(cli.create_stack, input=SIMPLE_INPUT, args=["-"])
 
         # Verify
         assert result.exit_code == 0
@@ -131,7 +141,7 @@ class TestEcsServiceInvalidation:
 
     def run_script_with_invalidation_params(self, cluster, service, role):
         """Execute script with simple input, and ECS service invalidation."""
-        args = []
+        args = ["-"]
         if cluster or service:
             args.append("--invalidate-ecs-service")
             if cluster:

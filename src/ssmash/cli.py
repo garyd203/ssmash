@@ -23,7 +23,7 @@ CFN_IMPORT_PREFIX = "!ImportValue:"
 
 
 @click.command(help=__doc__)
-@click.argument("input", type=click.File("r"), default="-")
+@click.argument("input", type=click.File("r"))
 @click.argument("output", type=click.File("w"), default="-")
 @click.option(
     "--description",
