@@ -54,7 +54,7 @@ Then run ``ssmash``:
 
 .. code-block:: console
 
-    $ ssmash acme_prod_config.yaml cloud_formation_template.yaml
+    $ ssmash acme_prod_config.yaml -o cloud_formation_template.yaml
     $ aws cloudformation deploy \
         --stack-name "acme-prod-config" --template-file cloud_formation_template.yaml \
         --no-fail-on-empty-changeset

@@ -24,7 +24,13 @@ CFN_IMPORT_PREFIX = "!ImportValue:"
 
 @click.command(help=__doc__)
 @click.argument("input", type=click.File("r"))
-@click.argument("output", type=click.File("w"), default="-")
+@click.option(
+    "-o",
+    "--output",
+    type=click.File("w"),
+    default="-",
+    help="Where to write the CloudFormation template file",
+)
 @click.option(
     "--description",
     type=str,

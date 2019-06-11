@@ -114,7 +114,7 @@ class TestCloudFormationIsProduced:
 
             # Exercise
             result = runner.invoke(
-                cli.create_stack, args=[input_filename, output_filename]
+                cli.create_stack, args=[input_filename, "-o", output_filename]
             )
 
             # Verify
