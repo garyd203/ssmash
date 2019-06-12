@@ -23,7 +23,7 @@ SIMPLE_OUTPUT_LINE = "Name: /foo"
 class TestBasicCLI:
     def test_should_display_help(self):
         runner = CliRunner()
-        help_result = runner.invoke(cli.create_stack, ["--help"])
+        help_result = runner.invoke(cli.run_ssmash, ["--help"])
 
         assert help_result.exit_code == 0
         assert re.search(r"--help +Show this message and exit", help_result.output)
@@ -35,7 +35,7 @@ class TestBasicCLI:
 
     def test_should_exit_cleanly_with_empty_input(self):
         runner = CliRunner()
-        result = runner.invoke(cli.create_stack, args=["-"])
+        result = runner.invoke(cli.run_ssmash, args=["-"])
         assert result.exit_code == 0
         assert not result.stderr_bytes
 
@@ -48,7 +48,7 @@ class TestCloudFormationMetadata:
         # Exercise
         runner = CliRunner()
         result = runner.invoke(
-            cli.create_stack, args=["-", "--description", description]
+            cli.run_ssmash, args=["--description", description, "-"]
         )
 
         # Verify
@@ -60,7 +60,7 @@ class TestCloudFormationMetadata:
 
         # Exercise
         runner = CliRunner()
-        result = runner.invoke(cli.create_stack, args=["-"])
+        result = runner.invoke(cli.run_ssmash, args=["-"])
 
         # Verify
         cfn = yaml.safe_load(result.stdout)
@@ -75,7 +75,7 @@ class TestCloudFormationMetadata:
         runner = CliRunner()
 
         with freeze_time(expected_time):
-            result = runner.invoke(cli.create_stack, args=["-"])
+            result = runner.invoke(cli.run_ssmash, args=["-"])
 
         # Verify
         cfn = yaml.safe_load(result.stdout)
@@ -87,7 +87,7 @@ class TestCloudFormationIsProduced:
     def test_should_error_if_input_file_is_not_specified(self):
         # Exercise
         runner = CliRunner()
-        result = runner.invoke(cli.create_stack, input=SIMPLE_INPUT)
+        result = runner.invoke(cli.run_ssmash, input=SIMPLE_INPUT)
 
         # Verify
         assert result.exit_code != 0
@@ -95,7 +95,7 @@ class TestCloudFormationIsProduced:
     def test_should_convert_simple_input_with_default_pipes(self):
         # Exercise
         runner = CliRunner()
-        result = runner.invoke(cli.create_stack, input=SIMPLE_INPUT, args=["-"])
+        result = runner.invoke(cli.run_ssmash, input=SIMPLE_INPUT, args=["-"])
 
         # Verify
         assert result.exit_code == 0
@@ -114,7 +114,7 @@ class TestCloudFormationIsProduced:
 
             # Exercise
             result = runner.invoke(
-                cli.create_stack, args=[input_filename, "-o", output_filename]
+                cli.run_ssmash, args=["-o", output_filename, input_filename]
             )
 
             # Verify

@@ -5,6 +5,9 @@
 import sys
 from datetime import datetime
 from datetime import timezone
+from functools import partial
+from functools import wraps
+from typing import Callable
 from typing import Optional
 from typing import Tuple
 from typing import Union
@@ -24,6 +27,55 @@ from ssmash.invalidation import create_ecs_service_invalidation_stack
 
 #: Prefix for specifying a CloudFormation import as a CLI parameter
 CFN_IMPORT_PREFIX = "!ImportValue:"
+
+
+@click.group("ssmash", chain=True, invoke_without_command=True, help=__doc__)
+# TODO make input be a option like output, for consistency (and so we don't have to put input after output
+@click.argument("input", type=click.File("r"), metavar="INPUTFILE")
+@click.option(
+    "-o",
+    "--output",
+    type=click.File("w"),
+    default="-",
+    help="Where to write the CloudFormation template file",
+)
+@click.option(
+    "--description",
+    type=str,
+    default="Application configuration",
+    help="The description for the CloudFormation stack.",
+)
+def run_ssmash(input, output, description: str):
+    pass
+
+
+@run_ssmash.resultcallback()
+def process_pipeline(processors, input, output, description: str):
+    # Create basic processor inputs
+    appconfig = _load_appconfig_from_yaml(input)
+    stack = _initialise_stack(description)
+
+    # Augment processing functions with default loader and writer
+    processors = (
+        [_create_ssm_parameters] + processors + [partial(_write_cfn_template, output)]
+    )
+
+    # Apply all chained commands
+    for processor in processors:
+        processor(appconfig, stack)
+
+
+def appconfig_processor(func: Callable) -> Callable:
+    """Decorator to convert a Click command into a custom processor for application configuration."""
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        def processor(appconfig: dict, stack: Stack):
+            return func(appconfig, stack, *args, **kwargs)
+
+        return processor
+
+    return wrapper
 
 
 @click.command(help=__doc__)
@@ -153,4 +205,4 @@ def _write_cfn_template(output, appconfig: dict, stack: Stack):
 
 
 if __name__ == "__main__":
-    sys.exit(create_stack())
+    sys.exit(run_ssmash())
