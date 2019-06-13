@@ -89,9 +89,13 @@ def appconfig_processor(func: Callable) -> Callable:
     return wrapper
 
 
-@run_ssmash.command("invalidate-ecs")
+@run_ssmash.command(
+    "invalidate-ecs",
+    options_metavar="(--cluster-name|--cluster-import) CLUSTER "
+    "(--service-name|--service-import) SERVICE "
+    "(--role-name|--role-import) ROLE ",
+)
 @click.option(
-    "-c",
     "--cluster-name",
     type=str,
     default=None,
@@ -102,14 +106,10 @@ def appconfig_processor(func: Callable) -> Callable:
     "--cluster-import",
     type=str,
     default=None,
-    help=(
-        "Alternative way to specify the cluster that contains the ECS "
-        "Service to invalidate, by referencing a CloudFormation export."
-    ),
+    help="Alternatively, specify the cluster as a CloudFormation import.",
     metavar="EXPORT_NAME",
 )
 @click.option(
-    "-s",
     "--service-name",
     type=str,
     default=None,
@@ -120,28 +120,21 @@ def appconfig_processor(func: Callable) -> Callable:
     "--service-import",
     type=str,
     default=None,
-    help=(
-        "Alternative way to specify the ECS Service to invalidate, "
-        "by referencing a CloudFormation export."
-    ),
+    help=("Alternatively, specify the ECS Service as a CloudFormation export."),
     metavar="EXPORT_NAME",
 )
 @click.option(
-    "-r",
     "--role-name",
     type=str,
     default=None,
-    help="The IAM role to use for invalidating this service.",
+    help="The IAM role to use for invalidating this service (as an ARN).",
     metavar="ARN",
 )
 @click.option(
     "--role-import",
     type=str,
     default=None,
-    help=(
-        "Alternative way to specify the IAM role to use for invalidating "
-        "this service, by referencing a CloudFormation export."
-    ),
+    help=("Alternatively, specify the IAM role as a CloudFormation export."),
     metavar="EXPORT_NAME",
 )
 @appconfig_processor
