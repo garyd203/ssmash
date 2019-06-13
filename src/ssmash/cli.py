@@ -78,6 +78,94 @@ def appconfig_processor(func: Callable) -> Callable:
     return wrapper
 
 
+@run_ssmash.command("invalidate-ecs")
+@click.option(
+    "-c",
+    "--cluster-name",
+    type=str,
+    default=None,
+    help="The cluster that contains the ECS Service to invalidate (as a name or ARN).",
+    metavar="ARN",
+)
+@click.option(
+    "--cluster-import",
+    type=str,
+    default=None,
+    help=(
+        "Alternative way to specify the cluster that contains the ECS "
+        "Service to invalidate, by referencing a CloudFormation export."
+    ),
+    metavar="EXPORT_NAME",
+)
+@click.option(
+    "-s",
+    "--service-name",
+    type=str,
+    default=None,
+    help="The ECS Service that depends on this configuration (as a name or ARN).",
+    metavar="ARN",
+)
+@click.option(
+    "--service-import",
+    type=str,
+    default=None,
+    help=(
+        "Alternative way to specify the ECS Service to invalidate, "
+        "by referencing a CloudFormation export."
+    ),
+    metavar="EXPORT_NAME",
+)
+@click.option(
+    "-r",
+    "--role-name",
+    type=str,
+    default=None,
+    help="The IAM role to use for invalidating this service.",
+    metavar="ARN",
+)
+@click.option(
+    "--role-import",
+    type=str,
+    default=None,
+    help=(
+        "Alternative way to specify the IAM role to use for invalidating "
+        "this service, by referencing a CloudFormation export."
+    ),
+    metavar="EXPORT_NAME",
+)
+@appconfig_processor
+def invalidate_ecs_service(
+    appconfig,
+    stack,
+    cluster_name,
+    cluster_import,
+    service_name,
+    service_import,
+    role_name,
+    role_import,
+):
+    """Invalidate the cache in an ECS Service that uses these parameters,
+    by restarting the service.
+    """
+    # Unpack the resource references
+    cluster = _get_cfn_resource_from_options("cluster", cluster_name, cluster_import)
+    service = _get_cfn_resource_from_options("service", service_name, service_import)
+    role = _get_cfn_resource_from_options("role", role_name, role_import)
+
+    # Use a custom Lambda to restart the service iff it's dependent resources
+    # have changed
+    stack.merge_stack(
+        create_ecs_service_invalidation_stack(
+            cluster=cluster,
+            service=service,
+            dependencies=[
+                r for r in stack.Resources.values() if isinstance(r, SSMParameter)
+            ],
+            restart_role=role,
+        ).with_prefixed_names("InvalidateEcs")
+    )
+
+
 @click.command(help=__doc__)
 @click.argument("input", type=click.File("r"))
 @click.option(
@@ -172,6 +260,34 @@ def _dereference_cfn_import_maybe(
         export_name = ref[len(CFN_IMPORT_PREFIX) :]
         return ImportValue(export_name)
     return ref
+
+
+def _get_cfn_resource_from_options(
+    option_name: str, arn: Optional[str], export_name: Optional[str]
+) -> Union[str, ImportValue]:
+    """Get a CloudFormation resource from one of several ways to specify it.
+
+    Parameters:
+        arn: The physical name or ARN of the underlying resources
+        export_name: The name of a CloudFormation Export that can be
+            dereferenced to access the resource.
+        option_name: The name of the option, used in CLI error messages.
+    """
+    if arn and export_name:
+        raise click.UsageError(
+            f"The {option_name} may not be specified using both a name/ARN and a CloudFormation Export."
+        )
+
+    if export_name:
+        result = ImportValue(export_name)
+    else:
+        result = arn
+
+    if not result:
+        raise click.UsageError(
+            f"The {option_name} must be specified using either a name/ARN, or a CloudFormation Export."
+        )
+    return result
 
 
 def _initialise_stack(description: str) -> Stack:

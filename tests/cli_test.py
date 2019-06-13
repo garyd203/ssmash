@@ -33,6 +33,18 @@ class TestBasicCLI:
             re.DOTALL | re.I,
         )
 
+    @pytest.mark.parametrize(
+        ("command", "description"),
+        [("invalidate-ecs", r"Invalidate.*cache.*ECS\s+Service")],
+    )
+    def test_sub_commands_should_display_help(self, command, description):
+        runner = CliRunner()
+        help_result = runner.invoke(cli.run_ssmash, ["-", command, "--help"])
+
+        assert help_result.exit_code == 0
+        assert re.search(r"--help +Show this message and exit", help_result.output)
+        assert re.search(description, help_result.output, re.DOTALL | re.I)
+
     def test_should_exit_cleanly_with_empty_input(self):
         runner = CliRunner()
         result = runner.invoke(cli.run_ssmash, args=["-"])
@@ -47,9 +59,7 @@ class TestCloudFormationMetadata:
 
         # Exercise
         runner = CliRunner()
-        result = runner.invoke(
-            cli.run_ssmash, args=["--description", description, "-"]
-        )
+        result = runner.invoke(cli.run_ssmash, args=["--description", description, "-"])
 
         # Verify
         cfn = yaml.safe_load(result.stdout)
@@ -139,22 +149,28 @@ class TestEcsServiceInvalidation:
         ) as mocked:
             yield mocked
 
-    def run_script_with_invalidation_params(self, cluster, service, role):
+    def run_script_with_invalidation_params(
+        self, cluster=None, service=None, role=None, extra_args=None
+    ):
         """Execute script with simple input, and ECS service invalidation."""
-        args = ["-"]
-        if cluster or service:
-            args.append("--invalidate-ecs-service")
-            if cluster:
-                args.append(cluster)
-            if service:
-                args.append(service)
+        args = ["-", "invalidate-ecs"]
+
+        if cluster:
+            args.append("--cluster-name")
+            args.append(cluster)
+        if service:
+            args.append("--service-name")
+            args.append(service)
         if role:
-            args.append("--invalidation-role")
+            args.append("--role-name")
             args.append(role)
+
+        if extra_args:
+            args.extend(extra_args)
 
         runner = CliRunner()
         result = runner.invoke(
-            cli.create_stack, input=SIMPLE_INPUT, args=args, catch_exceptions=False
+            cli.run_ssmash, input=SIMPLE_INPUT, args=args, catch_exceptions=False
         )
         return result
 
@@ -169,6 +185,8 @@ class TestEcsServiceInvalidation:
             result = self.run_script_with_invalidation_params(cluster, service, role)
 
         # Verify
+        assert result.exit_code == 0
+
         invalidation_mock.assert_called_with(
             cluster=cluster, service=service, dependencies=ANY, restart_role=role
         )
@@ -183,17 +201,22 @@ class TestEcsServiceInvalidation:
         service_export = "some-service-export"
         role_export = "some-role-export"
 
-        cluster_cli_param = "!ImportValue:" + cluster_export
-        service_cli_param = "!ImportValue:" + service_export
-        role_cli_param = "!ImportValue:" + role_export
-
         # Exercise
         with self.patch_create_invalidation_stack() as invalidation_mock:
-            self.run_script_with_invalidation_params(
-                cluster_cli_param, service_cli_param, role_cli_param
+            result = self.run_script_with_invalidation_params(
+                extra_args=[
+                    "--cluster-import",
+                    cluster_export,
+                    "--service-import",
+                    service_export,
+                    "--role-import",
+                    role_export,
+                ]
             )
 
         # Verify
+        assert result.exit_code == 0
+
         invalidation_mock.assert_called_with(
             cluster=ImportValue(cluster_export),
             service=ImportValue(service_export),
@@ -201,33 +224,40 @@ class TestEcsServiceInvalidation:
             restart_role=ImportValue(role_export),
         )
 
-    def test_should_ignore_role_if_service_not_specified(self):
+    @pytest.mark.parametrize(
+        ("cluster", "service", "role"),
+        [
+            (None, "arn:service", "arn:role"),
+            (None, None, "arn:role"),
+            (None, "arn:service", None),
+            ("arn:cluster", None, "arn:role"),
+            ("arn:cluster", None, None),
+            ("arn:cluster", "arn:service", None),
+        ],
+    )
+    def test_should_error_if_not_all_parameters_specified(self, cluster, service, role):
         # Exercise
         with self.patch_create_invalidation_stack() as invalidation_mock:
-            self.run_script_with_invalidation_params(None, None, "arn:role")
-
-        # Verify
-        invalidation_mock.assert_not_called()
-
-    def test_should_error_if_role_not_specified(self):
-        # Exercise
-        with self.patch_create_invalidation_stack() as invalidation_mock:
-            result = self.run_script_with_invalidation_params(
-                "arn:cluster", "arn:service", None
-            )
+            result = self.run_script_with_invalidation_params(cluster, service, role)
 
         # Verify
         assert result.exit_code != 0
         invalidation_mock.assert_not_called()
 
-    @pytest.mark.parametrize(
-        ("cluster", "service"), [(None, "arn:service"), ("arn:cluster", None)]
-    )
-    def test_should_error_if_cluster_and_service_not_specified(self, cluster, service):
+    @pytest.mark.parametrize("param_name", ["cluster", "service", "role"])
+    def test_should_error_if_both_name_and_import_specified(self, param_name):
+        # Setup
+        cluster = "arn:cluster"
+        service = "arn:service"
+        role = "arn:role"
+
         # Exercise
         with self.patch_create_invalidation_stack() as invalidation_mock:
             result = self.run_script_with_invalidation_params(
-                cluster, service, "arn:role"
+                cluster,
+                service,
+                role,
+                extra_args=[f"--{param_name}-import", "some-import-name"],
             )
 
         # Verify
