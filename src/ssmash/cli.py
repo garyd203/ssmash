@@ -30,11 +30,20 @@ CFN_IMPORT_PREFIX = "!ImportValue:"
 
 
 @click.group("ssmash", chain=True, invoke_without_command=True, help=__doc__)
-# TODO make input be a option like output, for consistency (and so we don't have to put input after output
-@click.argument("input", type=click.File("r"), metavar="INPUTFILE")
+@click.option(
+    "-i",
+    "--input",
+    "--input-file",
+    "input_file",
+    type=click.File("r"),
+    default="-",
+    help="Where to read the application configuration YAML file",
+)
 @click.option(
     "-o",
     "--output",
+    "--output-file",
+    "output_file",
     type=click.File("w"),
     default="-",
     help="Where to write the CloudFormation template file",
@@ -45,19 +54,21 @@ CFN_IMPORT_PREFIX = "!ImportValue:"
     default="Application configuration",
     help="The description for the CloudFormation stack.",
 )
-def run_ssmash(input, output, description: str):
+def run_ssmash(input_file, output_file, description: str):
     pass
 
 
 @run_ssmash.resultcallback()
-def process_pipeline(processors, input, output, description: str):
+def process_pipeline(processors, input_file, output_file, description: str):
     # Create basic processor inputs
-    appconfig = _load_appconfig_from_yaml(input)
+    appconfig = _load_appconfig_from_yaml(input_file)
     stack = _initialise_stack(description)
 
     # Augment processing functions with default loader and writer
     processors = (
-        [_create_ssm_parameters] + processors + [partial(_write_cfn_template, output)]
+        [_create_ssm_parameters]
+        + processors
+        + [partial(_write_cfn_template, output_file)]
     )
 
     # Apply all chained commands

@@ -39,7 +39,7 @@ class TestBasicCLI:
     )
     def test_sub_commands_should_display_help(self, command, description):
         runner = CliRunner()
-        help_result = runner.invoke(cli.run_ssmash, ["-", command, "--help"])
+        help_result = runner.invoke(cli.run_ssmash, [command, "--help"])
 
         assert help_result.exit_code == 0
         assert re.search(r"--help +Show this message and exit", help_result.output)
@@ -47,7 +47,7 @@ class TestBasicCLI:
 
     def test_should_exit_cleanly_with_empty_input(self):
         runner = CliRunner()
-        result = runner.invoke(cli.run_ssmash, args=["-"])
+        result = runner.invoke(cli.run_ssmash)
         assert result.exit_code == 0
         assert not result.stderr_bytes
 
@@ -59,7 +59,7 @@ class TestCloudFormationMetadata:
 
         # Exercise
         runner = CliRunner()
-        result = runner.invoke(cli.run_ssmash, args=["--description", description, "-"])
+        result = runner.invoke(cli.run_ssmash, args=["--description", description])
 
         # Verify
         cfn = yaml.safe_load(result.stdout)
@@ -70,7 +70,7 @@ class TestCloudFormationMetadata:
 
         # Exercise
         runner = CliRunner()
-        result = runner.invoke(cli.run_ssmash, args=["-"])
+        result = runner.invoke(cli.run_ssmash)
 
         # Verify
         cfn = yaml.safe_load(result.stdout)
@@ -85,7 +85,7 @@ class TestCloudFormationMetadata:
         runner = CliRunner()
 
         with freeze_time(expected_time):
-            result = runner.invoke(cli.run_ssmash, args=["-"])
+            result = runner.invoke(cli.run_ssmash)
 
         # Verify
         cfn = yaml.safe_load(result.stdout)
@@ -94,18 +94,10 @@ class TestCloudFormationMetadata:
 
 
 class TestCloudFormationIsProduced:
-    def test_should_error_if_input_file_is_not_specified(self):
-        # Exercise
-        runner = CliRunner()
-        result = runner.invoke(cli.run_ssmash, input=SIMPLE_INPUT)
-
-        # Verify
-        assert result.exit_code != 0
-
     def test_should_convert_simple_input_with_default_pipes(self):
         # Exercise
         runner = CliRunner()
-        result = runner.invoke(cli.run_ssmash, input=SIMPLE_INPUT, args=["-"])
+        result = runner.invoke(cli.run_ssmash, input=SIMPLE_INPUT)
 
         # Verify
         assert result.exit_code == 0
@@ -124,7 +116,7 @@ class TestCloudFormationIsProduced:
 
             # Exercise
             result = runner.invoke(
-                cli.run_ssmash, args=["-o", output_filename, input_filename]
+                cli.run_ssmash, args=["-i", input_filename, "-o", output_filename]
             )
 
             # Verify
@@ -153,7 +145,7 @@ class TestEcsServiceInvalidation:
         self, cluster=None, service=None, role=None, extra_args=None
     ):
         """Execute script with simple input, and ECS service invalidation."""
-        args = ["-", "invalidate-ecs"]
+        args = ["invalidate-ecs"]
 
         if cluster:
             args.append("--cluster-name")
