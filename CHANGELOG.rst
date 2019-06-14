@@ -14,8 +14,17 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 Changed
 ~~~~~~~
 * `#22 <https://github.com/garyd203/ssmash/issues/22>`_ : Change command line
-  API so that input is required, and output is an option instead of an
-  argument
+  API so that the input and output files are options, rather than arguments.
+* `#22 <https://github.com/garyd203/ssmash/issues/22>`_ : Change command line
+  API so that invalidating an ECS Service is done through a chained
+  sub-command, rather than additional options.
+
+Removed
+~~~~~~~
+* You can't specify input and output files as positional arguments any more.
+  Use `--input-file FILENAME` and `--output-file FILENAME` instead.
+* The `--invalidate-ecs-service` and `--invalidation-role` options have been
+  replaced with the `invalidate-ecs` command.
 
 v1.1.0 (2019-06-05)
 -------------------
