@@ -18,6 +18,8 @@ Changed
 * `#22 <https://github.com/garyd203/ssmash/issues/22>`_ : Change command line
   API so that invalidating an ECS Service is done through a chained
   sub-command, rather than additional options.
+* `#8 <https://github.com/garyd203/ssmash/issues/8>`_ : Support lists of plain
+  values, which are stored as a SSM StringList parameter
 
 Removed
 ~~~~~~~
