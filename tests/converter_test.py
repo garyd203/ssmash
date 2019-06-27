@@ -66,6 +66,30 @@ class TestConvertHierarchyToSsm:
         assert param.Properties.Type == "String"
         assert param.Properties.Value == expected
 
+    @given(
+        st.lists(
+            st.one_of(
+                st.text(alphabet=st.characters(blacklist_characters=","), min_size=1),
+                st.integers(),
+            ),
+            min_size=1,
+        )
+    )
+    def test_should_store_list_of_primitives_as_a_stringlist(self, value):
+        # Exercise
+        stack = convert_hierarchy_to_ssm({"some_key": value})
+
+        # Verify
+        _, param = stack.Resources.popitem()
+        assert param.Properties.Type == "StringList"
+
+        assert isinstance(param.Properties.Value, str)
+
+        actual_list = param.Properties.Value.split(",")
+        assert len(actual_list) == len(value)
+        for expected, actual in zip(value, actual_list):
+            assert str(expected) == actual
+
     def test_should_throw_error_for_none_value(self):
         # Exercise
         with pytest.raises(ValueError, match="(null|None)"):
@@ -78,6 +102,15 @@ class TestConvertHierarchyToSsm:
             ValueError, match="invalid.*{}".format(name.replace("?", r"\?"))
         ):
             convert_hierarchy_to_ssm({name: "aaa"})
+
+    @pytest.mark.parametrize(
+        "value",
+        [[], [None], [""], ["comma-ed,value"], [{"nested": "dict"}], [["nested_list"]]],
+    )
+    def test_should_throw_error_for_unsupported_list_contents(self, value):
+        # Exercise
+        with pytest.raises(ValueError, match="(list|null)"):
+            convert_hierarchy_to_ssm({"some_key": value})
 
     @given(parameter_name_strategy())
     def test_should_clean_logical_names(self, key):

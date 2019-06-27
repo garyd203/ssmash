@@ -40,14 +40,28 @@ def create_params_from_dict(
             create_params_from_dict(stack, value, item_path + "/")
             continue
 
-        # Plain values should be stored as a string parameter
+        # Store this value as a parameter
         logical_name = _clean_logical_name(item_path)
         logical_name = _dedupe_logical_name(stack, logical_name)
-        stack.Resources[logical_name] = SSMParameter(
-            Properties=SSMParameterProperties(
-                Name=item_path, Type="String", Value=_get_parameter_value(value)
+
+        if isinstance(value, list):
+            # Store lists of plain values as a StringList
+            stack.Resources[logical_name] = SSMParameter(
+                Properties=SSMParameterProperties(
+                    Name=item_path,
+                    Type="StringList",
+                    Value=_get_list_parameter_value(value),
+                )
             )
-        )
+        else:
+            # Plain values should be stored as a string parameter
+            stack.Resources[logical_name] = SSMParameter(
+                Properties=SSMParameterProperties(
+                    Name=item_path,
+                    Type="String",
+                    Value=_get_plain_parameter_value(value),
+                )
+            )
 
 
 def _check_path_component_is_valid(component: str):
@@ -91,7 +105,35 @@ def _dedupe_logical_name(stack: Stack, logical_name: str) -> str:
     return result
 
 
-def _get_parameter_value(value: Any) -> str:
+def _get_list_parameter_value(value: list) -> str:
+    """Lists of parameters should be stored as a comma-separated string."""
+    if not value:
+        raise ValueError("Cannot store an empty list in SSM Parameter Store")
+
+    result = []
+    for v in value:
+        if isinstance(v, (set, list, dict)):
+            raise ValueError(
+                "Cannot store complex values inside a list in SSM Parameter Store"
+            )
+
+        cleaned = _get_plain_parameter_value(v)
+
+        if not cleaned:
+            raise ValueError(
+                "Cannot store empty values inside a list in SSM Parameter Store"
+            )
+        if "," in cleaned:
+            raise ValueError(
+                "Cannot store values with a comma inside a list in SSM Parameter Store"
+            )
+
+        result.append(cleaned)
+
+    return ",".join(result)
+
+
+def _get_plain_parameter_value(value: Any) -> str:
     """All single-value parameters should be stored as a string.
 
     We normalise the outputs for some situations.
