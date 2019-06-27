@@ -8,8 +8,8 @@ The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_.
 
 
-[Unreleased]
-------------
+v2.0.0 (2019-06-28)
+-------------------
 
 Changed
 ~~~~~~~
@@ -18,6 +18,9 @@ Changed
 * `#22 <https://github.com/garyd203/ssmash/issues/22>`_ : Change command line
   API so that invalidating an ECS Service is done through a chained
   sub-command, rather than additional options.
+
+Added
+~~~~~
 * `#8 <https://github.com/garyd203/ssmash/issues/8>`_ : Support lists of plain
   values, which are stored as a SSM StringList parameter
 
