@@ -54,6 +54,6 @@ setup(
     test_suite="tests",
     tests_require=test_requirements,
     url="https://github.com/garyd203/ssmash",
-    version="2.1.0-beta",
+    version="2.0.1",
     zip_safe=False,
 )
