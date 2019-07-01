@@ -3,10 +3,12 @@
 from typing import List
 
 from flyingcircus.core import Stack
-from flyingcircus.intrinsic_function import GetAtt, Ref
+from flyingcircus.intrinsic_function import GetAtt
+from flyingcircus.intrinsic_function import Ref
 from flyingcircus.service.lambda_ import Function
 from flyingcircus.service.ssm import SSMParameter
 
+from ssmash.custom_resources import replace_lambda_context_resource_handler
 from ssmash.custom_resources import restart_ecs_service_resource_handler
 
 
@@ -66,6 +68,64 @@ def create_ecs_service_invalidation_stack(
             ServiceToken=GetAtt(restart_service_lambda, "Arn"),
             ClusterArn=cluster,
             ServiceArn=service,
+            IgnoredParameterNames=[Ref(p) for p in dependencies],
+            IgnoredParameterKeys=[GetAtt(p, "Value") for p in dependencies],
+        ),
+    )
+
+    # TODO consider creating a waiter anyway, so that the timeout is strictly reliable
+
+    return stack
+
+
+def create_lambda_invalidation_stack(
+    function: str, dependencies: List[SSMParameter], role
+) -> Stack:
+    """Create CloudFormation resources to invalidate a single AWS Lambda Function.
+
+    This is accomplished by adding a meaningless environment variable to the
+    Function, which will force it to re-deploy into a new execution context
+    (but without altering any behaviour).
+
+    Parameters:
+        dependencies: SSM Parameters that this Function uses
+        function: CloudFormation reference to the Lambda Function
+            (eg. an unversioned ARN, or the name)
+        role: CloudFormation reference (eg. an ARN) to an IAM role
+            that will be used to modify the Function.
+    """
+    # TODO make role optional, and create it on-the-fly if not provided
+    # TODO find a way to share role and lambda between multiple calls in the same stack? can de-dupe/cache based on identity in the final stack
+    # TODO get Lambda handler to have an internal timeout as well?
+
+    stack = Stack(Description="Invalidate Lambda Function after parameter update")
+
+    # Create an inline Lambda that can restart an ECS service, since this
+    # isn't built-in CloudFormation functionality.
+    stack.Resources[
+        "ReplacementLambda"
+    ] = replace_lambda_context_lambda = Function.create_from_python_function(
+        handler=replace_lambda_context_resource_handler, Role=role
+    )
+
+    # Set the Lambda Replacer's timeout to a fixed value. This should be
+    # universal, so we don't let callers specify it.
+    replace_lambda_context_lambda.Properties.Timeout = 20
+
+    # Create a custom resource to replace the Lambda's execution context.
+    #
+    # We don't want this to happen until the parameters have
+    # all been created, so we need to have the Restarter resource depend on
+    # the parameters (either implicitly or via DependsOn). We also want the
+    # restart to only happen if the parameters have actually changed - this
+    # can be done if we make the SSM Parameters be part of the resource
+    # specification (both the key and the value).
+    # TODO pull out common code here
+    stack.Resources["Replacer"] = dict(
+        Type="Custom::ReplaceLambdaContext",
+        Properties=dict(
+            ServiceToken=GetAtt(replace_lambda_context_lambda, "Arn"),
+            FunctionName=function,
             IgnoredParameterNames=[Ref(p) for p in dependencies],
             IgnoredParameterKeys=[GetAtt(p, "Value") for p in dependencies],
         ),

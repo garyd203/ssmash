@@ -8,6 +8,7 @@ from flyingcircus.service.ssm import SSMParameter
 from flyingcircus.service.ssm import SSMParameterProperties
 
 from ssmash.invalidation import create_ecs_service_invalidation_stack
+from ssmash.invalidation import create_lambda_invalidation_stack
 
 
 class TestEcsServiceInvalidation:
@@ -78,3 +79,52 @@ def _get_flattened_attributes(value) -> set:
         result.add(value)
 
     return result
+
+
+class TestLambdaInvalidation:
+    def test_creates_stack_for_single_lambda(self):
+        # TODO pull out some common helpers
+
+        # Setup
+        ssm_parameter = SSMParameter(
+            Properties=SSMParameterProperties(
+                Name="test-parameter-name", Type="String", Value="test-param-value"
+            )
+        )
+
+        function_name = "some-function-name"
+        dependencies = [ssm_parameter]
+        role = "role-arn"
+
+        # Exercise
+        stack = create_lambda_invalidation_stack(
+            function=function_name, dependencies=dependencies, role=role
+        )
+
+        # Verify Lambda Function
+        functions = [r for r in stack.Resources.values() if isinstance(r, Function)]
+        assert (
+            len(functions) == 1
+        ), "There should be a Lambda Function resource to perform the invalidation"
+
+        func = functions[0]
+        assert re.search(
+            r"replace.*lambda.*context", func.Properties.Handler, re.I
+        ), "Lambda should update an existing Lambda"
+        assert func.Properties.Role == role
+
+        # Verify Custom Resource
+        custom_resources = [
+            r for r in stack.Resources.values() if r["Type"].startswith("Custom::")
+        ]
+        assert (
+            len(custom_resources) == 1
+        ), "There should be a custom resource to update the target Lambda"
+
+        updater = custom_resources[0]
+        assert updater["Properties"]["FunctionName"] == function_name
+
+        # Verify dependencies for Lambda update
+        dependent_values = _get_flattened_attributes(updater)
+        assert Ref(ssm_parameter) in dependent_values
+        assert GetAtt(ssm_parameter, "Value") in dependent_values

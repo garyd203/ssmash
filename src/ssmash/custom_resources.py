@@ -6,6 +6,51 @@
 
 # TODO tests
 
+# FIXME multiple problems with the shipped cfnresponse module:
+#   - doesn't let us set the `Reason` in the response
+#   - uses the log stream name as the physical ID on error
+#   - consider bringing the module in locally as a pseudo-dependency, so that we can reference it.
+
+
+def replace_lambda_context_resource_handler(event, context):
+    """Lambda handler function to replace the execution context for a Lambda function, as a CloudFormation resource.
+
+    This is intended to be used in an inline deployment. The physical ID is
+    the Revision ID of the Lambda Function
+    """
+    # The `cfnresponse` module is injected at runtime if you are executing a Custom Resource handler
+    # noinspection PyUnresolvedReferences
+    import cfnresponse
+
+    import logging
+
+    logging.basicConfig(level=logging.DEBUG)
+    LOGGER = logging.getLogger("replacer")  # TODO
+    try:
+        import boto3
+
+        lambdaclient = boto3.client("lambda")
+        response = {}
+        physical_id = event.get("PhysicalResourceId")
+
+        if event["RequestType"] in ["Create", "Update"]:
+            # TODO implemnent by adding a new env var to it
+            #   get current config
+            #   update config, using revision_id to ensure we get it right
+            #   physica reosurce id could be the lambda revision id. just return it, always ignore and do a full replace-from-scratch in update.
+            pass  # FIXME
+        elif event["RequestType"] == "Delete":
+            # Doesn't make any sense to delete a deployment - just return
+            LOGGER.info(
+                "Ignoring request to delete resource for deployment %s", physical_id
+            )
+        else:
+            raise ValueError("Unknown CloudFormation request type")
+        cfnresponse.send(event, context, cfnresponse.SUCCESS, response, physical_id)
+    except Exception as ex:
+        LOGGER.exception("argh!")  # TODO
+        cfnresponse.send(event, context, cfnresponse.FAILED, {})
+
 
 def restart_ecs_service_resource_handler(event, context):
     """Lambda handler function to restart an ECS service, as a CloudFormation resource.
@@ -13,7 +58,6 @@ def restart_ecs_service_resource_handler(event, context):
     This is intended to be used in an inline deployment. The physical ID is
     the ID of the ECS service deployment
     """
-    # TODO consider bringing the `cfnresponse` module in locally as a pseudo-dependency, so that we can reference it.
     # The `cfnresponse` module is injected at runtime if you are executing a Custom Resource handler
     # noinspection PyUnresolvedReferences
     import cfnresponse
@@ -66,6 +110,4 @@ def restart_ecs_service_resource_handler(event, context):
         # TODO notify (optional) CFN waiter
     except Exception as ex:
         LOGGER.exception("argh!")  # TODO
-        # FIXME the cfnresponse module doesn't let us set the `Reason` in the response
-        # TODO set PhysicalResourceId in response if known. at least dont let it use the default log stream name (!)
         cfnresponse.send(event, context, cfnresponse.FAILED, {})
