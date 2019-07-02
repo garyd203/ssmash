@@ -129,10 +129,16 @@ class TestCloudFormationIsProduced:
             assert SIMPLE_OUTPUT_LINE in actual_output
 
 
-class TestEcsServiceInvalidation:
+class Patchers:
+    """Collection of helpers to patch ssmash internal functions.
+
+    Note that we usually have to patch the object imported into the `cli`
+    module, not the original function definition in the `invalidation` module
+    """
+
     @staticmethod
     @contextmanager
-    def patch_create_invalidation_stack():
+    def create_ecs_service_invalidation_stack():
         # Note that we patch the object imported into the `cli` module, not
         # the original function definition in the `invalidation` module
         with patch(
@@ -141,6 +147,8 @@ class TestEcsServiceInvalidation:
         ) as mocked:
             yield mocked
 
+
+class TestEcsServiceInvalidation:
     def run_script_with_invalidation_params(
         self, cluster=None, service=None, role=None, extra_args=None
     ):
@@ -173,7 +181,7 @@ class TestEcsServiceInvalidation:
         role = "arn:role"
 
         # Exercise
-        with self.patch_create_invalidation_stack() as invalidation_mock:
+        with Patchers.create_ecs_service_invalidation_stack() as invalidation_mock:
             result = self.run_script_with_invalidation_params(cluster, service, role)
 
         # Verify
@@ -194,7 +202,7 @@ class TestEcsServiceInvalidation:
         role_export = "some-role-export"
 
         # Exercise
-        with self.patch_create_invalidation_stack() as invalidation_mock:
+        with Patchers.create_ecs_service_invalidation_stack() as invalidation_mock:
             result = self.run_script_with_invalidation_params(
                 extra_args=[
                     "--cluster-import",
@@ -229,7 +237,7 @@ class TestEcsServiceInvalidation:
     )
     def test_should_error_if_not_all_parameters_specified(self, cluster, service, role):
         # Exercise
-        with self.patch_create_invalidation_stack() as invalidation_mock:
+        with Patchers.create_ecs_service_invalidation_stack() as invalidation_mock:
             result = self.run_script_with_invalidation_params(cluster, service, role)
 
         # Verify
@@ -244,7 +252,7 @@ class TestEcsServiceInvalidation:
         role = "arn:role"
 
         # Exercise
-        with self.patch_create_invalidation_stack() as invalidation_mock:
+        with Patchers.create_ecs_service_invalidation_stack() as invalidation_mock:
             result = self.run_script_with_invalidation_params(
                 cluster,
                 service,
