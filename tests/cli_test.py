@@ -1,4 +1,5 @@
 """Tests for the command line interface."""
+
 import re
 from contextlib import contextmanager
 from datetime import datetime
@@ -15,6 +16,7 @@ from freezegun import freeze_time
 
 from ssmash import cli
 from ssmash.invalidation import create_ecs_service_invalidation_stack
+from ssmash.invalidation import create_lambda_invalidation_stack
 
 SIMPLE_INPUT = """foo: bar"""
 SIMPLE_OUTPUT_LINE = "Name: /foo"
@@ -138,6 +140,15 @@ class Patchers:
 
     @staticmethod
     @contextmanager
+    def create_lambda_invalidation_stack():
+        with patch(
+            "ssmash.cli.create_lambda_invalidation_stack",
+            wraps=create_lambda_invalidation_stack,
+        ) as mocked:
+            yield mocked
+
+    @staticmethod
+    @contextmanager
     def create_ecs_service_invalidation_stack():
         # Note that we patch the object imported into the `cli` module, not
         # the original function definition in the `invalidation` module
@@ -256,6 +267,104 @@ class TestEcsServiceInvalidation:
             result = self.run_script_with_invalidation_params(
                 cluster,
                 service,
+                role,
+                extra_args=[f"--{param_name}-import", "some-import-name"],
+            )
+
+        # Verify
+        assert result.exit_code != 0
+        invalidation_mock.assert_not_called()
+
+
+class TestLambdaInvalidation:
+    def run_script_with_invalidation_params(
+        self, function=None, role=None, extra_args=None
+    ):
+        """Execute script with simple input, and Lambda invalidation."""
+        args = ["invalidate-lambda"]
+
+        if function:
+            args.append("--function-name")
+            args.append(function)
+        if role:
+            args.append("--role-name")
+            args.append(role)
+
+        if extra_args:
+            args.extend(extra_args)
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli.run_ssmash, input=SIMPLE_INPUT, args=args, catch_exceptions=False
+        )
+        return result
+
+    def test_should_call_invalidation_helper_and_have_parameters_in_output(self):
+        # Setup
+        function = "function-name"
+        role = "arn:role"
+
+        # Exercise
+        with Patchers.create_lambda_invalidation_stack() as invalidation_mock:
+            result = self.run_script_with_invalidation_params(function, role)
+
+        # Verify
+        assert result.exit_code == 0
+
+        invalidation_mock.assert_called_with(
+            function=function, role=role, dependencies=ANY
+        )
+
+        assert function in result.stdout
+        assert role in result.stdout
+
+    def test_should_dereference_cloudformation_imports(self):
+        # Setup
+        function_export = "some-function-export"
+        role_export = "some-role-export"
+
+        # Exercise
+        with Patchers.create_lambda_invalidation_stack() as invalidation_mock:
+            result = self.run_script_with_invalidation_params(
+                extra_args=[
+                    "--function-import",
+                    function_export,
+                    "--role-import",
+                    role_export,
+                ]
+            )
+
+        # Verify
+        assert result.exit_code == 0
+
+        invalidation_mock.assert_called_with(
+            function=ImportValue(function_export),
+            dependencies=ANY,
+            role=ImportValue(role_export),
+        )
+
+    @pytest.mark.parametrize(
+        ("function", "role"), [(None, "arn:role"), ("function-name", None)]
+    )
+    def test_should_error_if_not_all_parameters_specified(self, function, role):
+        # Exercise
+        with Patchers.create_lambda_invalidation_stack() as invalidation_mock:
+            result = self.run_script_with_invalidation_params(function, role)
+
+        # Verify
+        assert result.exit_code != 0
+        invalidation_mock.assert_not_called()
+
+    @pytest.mark.parametrize("param_name", ["function", "role"])
+    def test_should_error_if_both_name_and_import_specified(self, param_name):
+        # Setup
+        function = "function-name"
+        role = "arn:role"
+
+        # Exercise
+        with Patchers.create_lambda_invalidation_stack() as invalidation_mock:
+            result = self.run_script_with_invalidation_params(
+                function,
                 role,
                 extra_args=[f"--{param_name}-import", "some-import-name"],
             )

@@ -19,6 +19,7 @@ from flyingcircus.service.ssm import SSMParameter
 
 from ssmash.converter import convert_hierarchy_to_ssm
 from ssmash.invalidation import create_ecs_service_invalidation_stack
+from ssmash.invalidation import create_lambda_invalidation_stack
 
 # TODO move helper functions to another module
 # TODO tests for helper functions
@@ -166,6 +167,67 @@ def invalidate_ecs_service(
             ],
             restart_role=role,
         ).with_prefixed_names("InvalidateEcs")
+    )
+
+
+@run_ssmash.command(
+    "invalidate-lambda",
+    options_metavar="(--function-name|--function-import) FUNCTION "
+    "(--role-name|--role-import) ROLE ",
+)
+@click.option(
+    "--function-name",
+    type=str,
+    default=None,
+    help="The Lambda Function to invalidate (as a name or ARN).",
+    metavar="ARN",
+)
+@click.option(
+    "--function-import",
+    type=str,
+    default=None,
+    help="Alternatively, specify the Lambda Function as a CloudFormation import.",
+    metavar="EXPORT_NAME",
+)
+@click.option(
+    "--role-name",
+    type=str,
+    default=None,
+    help="The IAM role to use for invalidating this Lambda (as an ARN).",
+    metavar="ARN",
+)
+@click.option(
+    "--role-import",
+    type=str,
+    default=None,
+    help=("Alternatively, specify the IAM role as a CloudFormation export."),
+    metavar="EXPORT_NAME",
+)
+@appconfig_processor
+def invalidate_lambda(
+    appconfig, stack, function_name, function_import, role_name, role_import
+):
+    """Invalidate the cache in a Lambda Function that uses these parameters,
+    by restarting the Lambda Execution Context.
+    """
+    # TODO be able to invalidate all lambda functions in an entire stack
+
+    # Unpack the resource references
+    function = _get_cfn_resource_from_options(
+        "function", function_name, function_import
+    )
+    role = _get_cfn_resource_from_options("role", role_name, role_import)
+
+    # Use a custom Lambda to invalidate the function iff it's dependent resources
+    # have changed
+    stack.merge_stack(
+        create_lambda_invalidation_stack(
+            function=function,
+            dependencies=[
+                r for r in stack.Resources.values() if isinstance(r, SSMParameter)
+            ],
+            role=role,
+        ).with_prefixed_names("InvalidateLambda")
     )
 
 
