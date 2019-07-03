@@ -46,9 +46,12 @@ Suppose you have an input file like this:
 
     acme:
         shipping-labels-service:
-            block-coyotes: true
+            enable-fast-delivery: true
             explosive-purchase-limit: 1000
             greeting: hello world
+            whitelist-users:
+                - coyote
+                - roadrunner
 
 Then run ``ssmash``:
 
@@ -62,8 +65,9 @@ Then run ``ssmash``:
 You will now have the following parameters in AWS Systems Manager, that can
 be loaded as a string inside your application:
 
-* ``/acme/shipping-labels-service/block-coyotes`` = "true"
+* ``/acme/shipping-labels-service/enable-fast-delivery`` = "true"
 * ``/acme/shipping-labels-service/explosive-purchase-limit`` = "1000"
 * ``/acme/shipping-labels-service/greeting`` = "hello world"
+* ``/acme/shipping-labels-service/whitelist-users`` = "coyote,roadrunner"
 
 
