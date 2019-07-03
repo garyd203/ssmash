@@ -23,9 +23,10 @@ def replace_lambda_context_resource_handler(event, context):
     import cfnresponse
 
     import logging
+    from datetime import datetime
 
     logging.basicConfig(level=logging.DEBUG)
-    LOGGER = logging.getLogger("replacer")  # TODO
+    LOGGER = logging.getLogger("replacer")
     try:
         import boto3
 
@@ -34,15 +35,28 @@ def replace_lambda_context_resource_handler(event, context):
         physical_id = event.get("PhysicalResourceId")
 
         if event["RequestType"] in ["Create", "Update"]:
-            # TODO implemnent by adding a new env var to it
-            #   get current config
-            #   update config, using revision_id to ensure we get it right
-            #   physica reosurce id could be the lambda revision id. just return it, always ignore and do a full replace-from-scratch in update.
-            pass  # FIXME
+            properties = event["ResourceProperties"]
+            old_config = lambdaclient.get_function_configuration(
+                FunctionName=properties["FunctionName"]
+            )
+
+            new_environment = old_config["Environment"]["Variables"]
+            new_environment["SSMASH_UPDATED_TIMESTAMP"] = datetime.isoformat(
+                datetime.utcnow()
+            )
+
+            response = lambdaclient.update_function_configuration(
+                FunctionName=properties["FunctionName"],
+                Environment={"Variables": new_environment},
+                RevisionId=old_config["RevisionId"],
+            )
+
+            physical_id = response["RevisionId"]
         elif event["RequestType"] == "Delete":
             # Doesn't make any sense to delete a deployment - just return
             LOGGER.info(
-                "Ignoring request to delete resource for deployment %s", physical_id
+                "Ignoring request to delete resource for Lambda replacement context %s",
+                physical_id,
             )
         else:
             raise ValueError("Unknown CloudFormation request type")
