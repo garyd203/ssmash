@@ -37,6 +37,16 @@ Install ``ssmash`` using ``pip``, the standard python package installer:
 
    $ pip install ssmash
 
+You will probably use ``ssmash`` with the AWS command line tools, so install
+and
+`configure <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html>`_
+that too, if you haven't already:
+
+.. code-block:: console
+
+   $ pip install awscli
+   $ aws configure
+
 Example
 -------
 
