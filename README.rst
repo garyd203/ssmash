@@ -81,3 +81,64 @@ be loaded as a string inside your application:
 * ``/acme/shipping-labels-service/whitelist-users`` = "coyote,roadrunner"
 
 
+Automated Application Restarts
+------------------------------
+
+Most of the time, your application loads its configuration at startup.
+Depending on your application, the safest and easiest way to reload its
+configuration is to simply restart it.
+
+ssmash has built-in support to restart some types of application as part of
+the deployment process. We do this by telling it to "invalidate" the
+configuration used by the application.
+
+Docker with AWS ECS
+^^^^^^^^^^^^^^^^^^^
+
+``ssmash`` can generate CloudFormation that will safely restart the Tasks in
+an ECS Service once your configuration has changed, and make the successful
+deployment of your new application configuration depend upon the successful
+restart of that Service. Just specify the target ECS service using extra
+command line parameters, like so:
+
+.. code-block:: console
+
+    $ ssmash -i acme_prod_config.yaml -o cloud_formation_template.yaml \
+        invalidate-ecs \
+        --cluster-name acme-prod-cluster \
+        --service-name shipping-labels-service \
+        --role-name arn:aws:iam::123456789012:role/acme-ecs-admin
+    $ aws cloudformation deploy \
+        --stack-name "acme-prod-config" --template-file cloud_formation_template.yaml \
+        --no-fail-on-empty-changeset
+
+You can also refer to the name of a `CloudFormation Export
+<https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-stack-exports.html>`_
+instead of using the name directly (eg. if your service has a non-obvious
+generated name), using the interchangeable command line parameters for
+``--cluster-import`` and ``--service-import`` and ``--role-import``.
+
+Serverless with AWS Lambda
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``ssmash`` can generate CloudFormation that will safely cause your
+serverless functions to discard their virtual machine (aka "`Execution Context
+<https://docs.aws.amazon.com/lambda/latest/dg/running-lambda-code.html>`_"),
+meaning they effectively reload their configuration. To
+access this secret sauce, just add a couple more command line parameters:
+
+.. code-block:: console
+
+    $ ssmash -i acme_prod_config.yaml -o cloud_formation_template.yaml \
+        invalidate-lambda \
+        --function-name shipping-label-printer-function \
+        --role-name arn:aws:iam::123456789012:role/acme-serverless-admin
+    $ aws cloudformation deploy \
+        --stack-name "acme-prod-config" --template-file cloud_formation_template.yaml \
+        --no-fail-on-empty-changeset
+
+You can also refer to the name of a `CloudFormation Export
+<https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-stack-exports.html>`_
+instead of using the name directly, using the interchangeable command line
+parameters for ``--function-import`` and ``--role-import``.
+
