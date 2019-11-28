@@ -14,6 +14,9 @@ Added:
 
 * Be able to invalidate a single Lambda Function
 
+Fixed:
+* Update versions for dependencies to be "compatible"
+
 v2.0.1 (2019-06-28)
 -------------------
 
