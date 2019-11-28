@@ -2,14 +2,14 @@
 black==19.3b0
 bumpversion==0.5.3
 click>=7.0,<8
-flying-circus==0.7.2
+flying-circus>=0.7,<0.8
 freezegun==0.3.10
 hypothesis==4.23.6
 inflection==0.3.1
 pytest==3.8.2
 pytest-runner==4.2
 #TODO pytest-hammertime
-PyYAML==5.1
+PyYAML>=5.1,<6
 semver==2.8.1
 Sphinx==1.8.1
 tox==3.5.2
