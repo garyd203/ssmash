@@ -11,6 +11,7 @@ v2.1.2 (2019-12-30)
 -------------------
 
 Fixed:
+
 * `#39 <https://github.com/garyd203/ssmash/issues/39>`_ : Fix PyYAML
   version inconsistency that prevents installation with `pip`. Thanks
   to `@NeolithEra <https://github.com/NeolithEra>`_ for the bug report.
@@ -19,6 +20,7 @@ v2.1.1 (2019-11-29)
 -------------------
 
 Fixed:
+
 * Update versions for dependencies
 
 v2.1.0 (2019-11-28)
@@ -29,6 +31,7 @@ Added:
 * Be able to invalidate a single Lambda Function
 
 Fixed:
+
 * Update versions for dependencies to be "compatible"
 
 v2.0.1 (2019-06-28)
