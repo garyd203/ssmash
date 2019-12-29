@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file.
 The format is based on `Keep a Changelog <https://keepachangelog.com/en/1.0.0/>`_,
 and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0.html>`_.
 
+v2.1.2 (2019-12-30)
+-------------------
+
+Fixed:
+* `#39 <https://github.com/garyd203/ssmash/issues/39>`_ : Fix PyYAML
+  version inconsistency that prevents installation with `pip`. Thanks
+  to `@NeolithEra <https://github.com/NeolithEra>`_ for the bug report.
+
 v2.1.1 (2019-11-29)
 -------------------
 
