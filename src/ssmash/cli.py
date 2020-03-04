@@ -135,7 +135,7 @@ def appconfig_processor(func: Callable) -> Callable:
     "--role-import",
     type=str,
     default=None,
-    help=("Alternatively, specify the IAM role as a CloudFormation export."),
+    help="Alternatively, specify the IAM role as a CloudFormation export.",
     metavar="EXPORT_NAME",
 )
 @appconfig_processor
