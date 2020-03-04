@@ -150,10 +150,10 @@ class Patchers:
     @staticmethod
     @contextmanager
     def create_ecs_service_invalidation_stack():
-        # Note that we patch the object imported into the `cli` module, not
+        # Note that we patch the object imported into the `loader` module, not
         # the original function definition in the `invalidation` module
         with patch(
-            "ssmash.cli.create_ecs_service_invalidation_stack",
+            "ssmash.loader.create_ecs_service_invalidation_stack",
             wraps=create_ecs_service_invalidation_stack,
         ) as mocked:
             yield mocked

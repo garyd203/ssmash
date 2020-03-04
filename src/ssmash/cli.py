@@ -15,8 +15,8 @@ from flyingcircus.core import Stack
 from flyingcircus.service.ssm import SSMParameter
 
 from ssmash.converter import convert_hierarchy_to_ssm
-from ssmash.invalidation import create_ecs_service_invalidation_stack
 from ssmash.invalidation import create_lambda_invalidation_stack
+from ssmash.loader import EcsServiceInvalidator
 from ssmash.loader import get_cfn_resource_from_options
 
 # TODO move helper functions to another module
@@ -152,22 +152,22 @@ def invalidate_ecs_service(
     """Invalidate the cache in an ECS Service that uses these parameters,
     by restarting the service.
     """
-    # Unpack the resource references
-    cluster = get_cfn_resource_from_options("cluster", cluster_name, cluster_import)
-    service = get_cfn_resource_from_options("service", service_name, service_import)
-    role = get_cfn_resource_from_options("role", role_name, role_import)
+    invalidator = EcsServiceInvalidator(
+        cluster_name=cluster_name,
+        cluster_import=cluster_import,
+        service_name=service_name,
+        service_import=service_import,
+        role_name=role_name,
+        role_import=role_import,
+    )
 
-    # Use a custom Lambda to restart the service iff it's dependent resources
-    # have changed
+    all_parameters = [
+        r for r in stack.Resources.values() if isinstance(r, SSMParameter)
+    ]
     stack.merge_stack(
-        create_ecs_service_invalidation_stack(
-            cluster=cluster,
-            service=service,
-            dependencies=[
-                r for r in stack.Resources.values() if isinstance(r, SSMParameter)
-            ],
-            restart_role=role,
-        ).with_prefixed_names("InvalidateEcs")
+        invalidator.create_resources(all_parameters).with_prefixed_names(
+            "InvalidateEcs"
+        )
     )
 
 
