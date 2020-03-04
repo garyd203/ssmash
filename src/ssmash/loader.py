@@ -31,30 +31,6 @@ class EcsServiceInvalidator:
         )
         self.role = get_cfn_resource_from_options("role", role_name, role_import)
 
-    @classmethod
-    def from_yaml(cls, loader, node) -> "EcsServiceInvalidator":
-        """Construct an object from a custom YAML node"""
-        data = loader.construct_mapping(node, deep=True)
-
-        unknown_parameters = set(data.keys()).difference(
-            {
-                "cluster_name",
-                "cluster_import",
-                "service_name",
-                "service_import",
-                "role_name",
-                "role_import",
-            }
-        )
-        if unknown_parameters:
-            raise ValueError(
-                "Unsupported parameters in YAML tag: {}".format(
-                    sorted(unknown_parameters)
-                )
-            )
-
-        return cls(**data)
-
     def create_resources(self, dependencies: List[SSMParameter]) -> Stack:
         """Create CloudFormation resources to invalidate this ECS service,
         contingent on any change in the specified dependencies.

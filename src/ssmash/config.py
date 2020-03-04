@@ -54,18 +54,3 @@ class InvalidatingConfigKey(str):
     def invalidated_applications(self, value: Iterable[str]):
         # noinspection PyAttributeOutsideInit
         self._invalidated_services = set(value)
-
-    @classmethod
-    def from_yaml(cls, loader, node) -> "InvalidatingConfigKey":
-        """Construct an object from a custom YAML node"""
-        data = loader.construct_mapping(node, deep=True)
-
-        unknown_parameters = set(data.keys()).difference({"key", "invalidates"})
-        if unknown_parameters:
-            raise ValueError(
-                "Unsupported parameters in YAML tag: {}".format(
-                    sorted(unknown_parameters)
-                )
-            )
-
-        return cls.construct(**data)
