@@ -8,18 +8,16 @@ from datetime import timezone
 from functools import partial
 from functools import wraps
 from typing import Callable
-from typing import Optional
-from typing import Union
 
 import click
 import yaml
 from flyingcircus.core import Stack
-from flyingcircus.intrinsic_function import ImportValue
 from flyingcircus.service.ssm import SSMParameter
 
 from ssmash.converter import convert_hierarchy_to_ssm
 from ssmash.invalidation import create_ecs_service_invalidation_stack
 from ssmash.invalidation import create_lambda_invalidation_stack
+from ssmash.loader import get_cfn_resource_from_options
 
 # TODO move helper functions to another module
 # TODO tests for helper functions
@@ -82,7 +80,10 @@ def appconfig_processor(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(*args, **kwargs):
         def processor(appconfig: dict, stack: Stack):
-            return func(appconfig, stack, *args, **kwargs)
+            try:
+                return func(appconfig, stack, *args, **kwargs)
+            except ValueError as ex:
+                raise click.UsageError(str(ex)) from ex
 
         return processor
 
@@ -152,9 +153,9 @@ def invalidate_ecs_service(
     by restarting the service.
     """
     # Unpack the resource references
-    cluster = _get_cfn_resource_from_options("cluster", cluster_name, cluster_import)
-    service = _get_cfn_resource_from_options("service", service_name, service_import)
-    role = _get_cfn_resource_from_options("role", role_name, role_import)
+    cluster = get_cfn_resource_from_options("cluster", cluster_name, cluster_import)
+    service = get_cfn_resource_from_options("service", service_name, service_import)
+    role = get_cfn_resource_from_options("role", role_name, role_import)
 
     # Use a custom Lambda to restart the service iff it's dependent resources
     # have changed
@@ -213,10 +214,8 @@ def invalidate_lambda(
     # TODO be able to invalidate all lambda functions in an entire stack
 
     # Unpack the resource references
-    function = _get_cfn_resource_from_options(
-        "function", function_name, function_import
-    )
-    role = _get_cfn_resource_from_options("role", role_name, role_import)
+    function = get_cfn_resource_from_options("function", function_name, function_import)
+    role = get_cfn_resource_from_options("role", role_name, role_import)
 
     # Use a custom Lambda to invalidate the function iff it's dependent resources
     # have changed
@@ -236,34 +235,6 @@ def _create_ssm_parameters(appconfig: dict, stack: Stack):
     stack.merge_stack(
         convert_hierarchy_to_ssm(appconfig).with_prefixed_names("SSMParam")
     )
-
-
-def _get_cfn_resource_from_options(
-    option_name: str, arn: Optional[str], export_name: Optional[str]
-) -> Union[str, ImportValue]:
-    """Get a CloudFormation resource from one of several ways to specify it.
-
-    Parameters:
-        arn: The physical name or ARN of the underlying resources
-        export_name: The name of a CloudFormation Export that can be
-            dereferenced to access the resource.
-        option_name: The name of the option, used in CLI error messages.
-    """
-    if arn and export_name:
-        raise click.UsageError(
-            f"The {option_name} may not be specified using both a name/ARN and a CloudFormation Export."
-        )
-
-    if export_name:
-        result = ImportValue(export_name)
-    else:
-        result = arn
-
-    if not result:
-        raise click.UsageError(
-            f"The {option_name} must be specified using either a name/ARN, or a CloudFormation Export."
-        )
-    return result
 
 
 def _initialise_stack(description: str) -> Stack:
