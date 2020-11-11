@@ -2,6 +2,7 @@
 
 import re
 from typing import Any
+from typing import List
 
 import inflection
 from flyingcircus.core import Stack
@@ -29,15 +30,19 @@ def convert_hierarchy_to_ssm(appconfig: dict) -> Stack:
 
 
 def create_params_from_dict(
-    stack: Stack, appconfig: dict, path_prefix: str = "/"
+    stack: Stack, appconfig: dict, path_components: List[str] = None
 ) -> None:
+    if path_components is None:
+        path_components = []
+
     for key, value in appconfig.items():
         _check_path_component_is_valid(key)
-        item_path = path_prefix + key
+        item_path_components = path_components + [key]
+        item_path = "/" + "/".join(item_path_components)
 
         # Nested dictionaries form a parameter hierarchy
         if isinstance(value, dict):
-            create_params_from_dict(stack, value, item_path + "/")
+            create_params_from_dict(stack, value, item_path_components)
             continue
 
         # Store this value as a parameter
