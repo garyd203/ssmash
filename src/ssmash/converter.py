@@ -51,7 +51,7 @@ def create_params_from_dict(
 
         if isinstance(value, list):
             # Store lists of plain values as a StringList
-            stack.Resources[logical_name] = SSMParameter(
+            stack.Resources[logical_name] = resource = SSMParameter(
                 Properties=SSMParameterProperties(
                     Name=item_path,
                     Type="StringList",
@@ -60,13 +60,14 @@ def create_params_from_dict(
             )
         else:
             # Plain values should be stored as a string parameter
-            stack.Resources[logical_name] = SSMParameter(
+            stack.Resources[logical_name] = resource = SSMParameter(
                 Properties=SSMParameterProperties(
                     Name=item_path,
                     Type="String",
                     Value=_get_plain_parameter_value(value),
                 )
             )
+        _track_created_resource(item_path_components, resource)
 
 
 def _check_path_component_is_valid(component: str):
@@ -148,3 +149,10 @@ def _get_plain_parameter_value(value: Any) -> str:
     if value is None:
         raise ValueError("Cannot store null values in SSM Parameter Store")
     return str(value)
+
+
+def _track_created_resource(path_components: List[str], resource: SSMParameter):
+    """Track when a CloudFormation resource is created at a given point in the config hierarchy."""
+    for configkey in path_components:
+        if hasattr(configkey, "add_child_resource"):
+            configkey.add_child_resource(resource)

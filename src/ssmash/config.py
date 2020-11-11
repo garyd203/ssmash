@@ -4,7 +4,8 @@ from typing import FrozenSet
 from typing import Iterable
 from typing import List
 from typing import Optional
-from typing import Set
+
+from flyingcircus.core import Resource
 
 
 class InvalidatingConfigKey(str):
@@ -54,3 +55,19 @@ class InvalidatingConfigKey(str):
     def invalidated_applications(self, value: Iterable[str]):
         # noinspection PyAttributeOutsideInit
         self._invalidated_services = set(value)
+
+    @property
+    def dependent_resources(self) -> FrozenSet[Resource]:
+        """Resources that are dependent on this key.
+
+        This is a read-only copy of the internal set.
+        """
+        if not hasattr(self, "_dependent_resources"):
+            # noinspection PyAttributeOutsideInit
+            self._dependent_resources = list()
+        return frozenset(self._dependent_resources)
+
+    def add_child_resource(self, resource: Resource):
+        # Touch the property to ensure the internal list exists, before we use it
+        _ = self.dependent_resources
+        self._dependent_resources.append(resource)
