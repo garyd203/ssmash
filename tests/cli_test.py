@@ -4,6 +4,7 @@ import re
 from contextlib import contextmanager
 from datetime import datetime
 from datetime import timezone
+from textwrap import dedent
 from unittest.mock import ANY
 from unittest.mock import patch
 
@@ -12,6 +13,7 @@ import semver
 import yaml
 from click.testing import CliRunner
 from flyingcircus.intrinsic_function import ImportValue
+from flyingcircus.service.ssm import SSMParameter
 from freezegun import freeze_time
 
 from ssmash import cli
@@ -397,3 +399,109 @@ class TestLambdaInvalidation:
         # Verify
         assert result.exit_code != 0
         invalidation_mock.assert_not_called()
+
+
+class TestEmbeddedInvalidation:
+    def run_script_with_embedded_invalidation(
+        self,
+        cluster="fake-cluster-name",
+        service="fake-service-name",
+        role="fake-role-name",
+    ):
+        """Execute script with simple input, and ECS service invalidation."""
+        param_input = dedent(
+            f"""---
+            top:
+                first:
+                    a: 1
+                    b: 2
+                ? !item {{invalidates: [servicea], key: second}}
+                :
+                    a: 1
+                    b: 2
+                third:
+                    a: 1
+                    ? !item {{invalidates: [servicea], key: b}}
+                    : 2
+            .ssmash-config:
+                invalidations:
+                    servicea: !ecs-invalidation
+                        cluster_name: {cluster}
+                        service_name: {service}
+                        role_name: {role}
+        """
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli.run_ssmash, input=param_input, catch_exceptions=False
+        )
+        return result
+
+    def test_should_create_resources(self):
+        # Exercise
+        with Patchers.write_cfn_template() as write_mock:
+            result = self.run_script_with_embedded_invalidation()
+
+        # Verify
+        assert result.exit_code == 0
+        assert not result.stderr_bytes
+
+        write_mock.assert_called_once()
+        actual_stack = write_mock.call_args[0][2]
+
+        actual_parameter_names = [
+            k for k, v in actual_stack.Resources.items() if isinstance(v, SSMParameter)
+        ]
+        assert sorted(actual_parameter_names) == [
+            "SSMParamTopFirstA",
+            "SSMParamTopFirstB",
+            "SSMParamTopSecondA",
+            "SSMParamTopSecondB",
+            "SSMParamTopThirdA",
+            "SSMParamTopThirdB",
+        ]
+
+        assert (
+            actual_stack.Resources["SSMParamTopSecondA"].Properties.Name
+            == "/top/second/a"
+        ), "Should use plain key when node is invalidated"
+        assert (
+            actual_stack.Resources["SSMParamTopSecondA"].Properties.Value == "1"
+        ), "Should use plain value when node is invalidated"
+
+        assert (
+            actual_stack.Resources["SSMParamTopThirdB"].Properties.Name
+            == "/top/third/b"
+        ), "Should use plain key when leaf value is invalidated"
+        assert (
+            actual_stack.Resources["SSMParamTopThirdB"].Properties.Value == "2"
+        ), "Should use plain value when leaf value is invalidated"
+
+    def test_should_call_invalidation_helper_with_dependent_parameters(self):
+        # Setup
+        cluster = "arn:cluster"
+        service = "arn:service"
+        role = "arn:role"
+
+        # Exercise
+        with Patchers.create_ecs_service_invalidation_stack() as invalidation_mock:
+            result = self.run_script_with_embedded_invalidation(cluster, service, role)
+
+        # Verify
+        assert result.exit_code == 0
+        assert not result.stderr_bytes
+
+        invalidation_mock.assert_called_once_with(
+            cluster=cluster, service=service, dependencies=ANY, restart_role=role
+        )
+
+        dependency_names = sorted(
+            param.Properties.Name
+            for param in (invalidation_mock.call_args[1]["dependencies"])
+        )
+        assert dependency_names == ["/top/second/a", "/top/second/b", "/top/third/b"]
+
+        assert cluster in result.stdout
+        assert service in result.stdout
+        assert role in result.stdout

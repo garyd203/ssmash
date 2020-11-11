@@ -8,16 +8,22 @@ from datetime import timezone
 from functools import partial
 from functools import wraps
 from typing import Callable
+from typing import Dict
+from typing import List
 
 import click
 import yaml
+from flyingcircus.core import Resource
 from flyingcircus.core import Stack
 from flyingcircus.service.ssm import SSMParameter
 
+from ssmash.config import InvalidatingConfigKey
 from ssmash.converter import convert_hierarchy_to_ssm
 from ssmash.invalidation import create_lambda_invalidation_stack
 from ssmash.loader import EcsServiceInvalidator
 from ssmash.loader import get_cfn_resource_from_options
+from ssmash.util import clean_logical_name
+from ssmash.yamlhelper import SsmashYamlLoader
 
 # TODO move helper functions to another module
 # TODO tests for helper functions
@@ -66,6 +72,7 @@ def process_pipeline(processors, input_file, output_file, description: str):
     processors = (
         [_create_ssm_parameters]
         + processors
+        + [_create_embedded_invalidations]
         + [partial(_write_cfn_template, output_file)]
     )
 
@@ -232,9 +239,58 @@ def invalidate_lambda(
 
 def _create_ssm_parameters(appconfig: dict, stack: Stack):
     """Create SSM parameters for every item in the application configuration"""
+    clean_config = dict(appconfig)
+    clean_config.pop(".ssmash-config", None)
     stack.merge_stack(
-        convert_hierarchy_to_ssm(appconfig).with_prefixed_names("SSMParam")
+        convert_hierarchy_to_ssm(clean_config).with_prefixed_names("SSMParam")
     )
+
+
+def _create_embedded_invalidations(appconfig: dict, stack: Stack):
+    """Invalidate the cache in applications that use some of these parameters
+    (by restarting the application), as specified by configuration embedded
+    inline in the input file.
+    """
+    invalidatable_services = appconfig.get(".ssmash-config", {}).get("invalidations")
+    if not invalidatable_services:
+        return
+
+    clean_config = dict(appconfig)
+    clean_config.pop(".ssmash-config", None)
+    invalidated_resources = _get_invalidated_resources(clean_config)
+
+    for appname, appresources in invalidated_resources.items():
+        invalidator = invalidatable_services.get(appname)
+        if not invalidator:
+            # TODO this error message is a bit fragile
+            raise ValueError(
+                f"Parameter {appresources[0].Properties.Name} invalidates service {appname}, but that service is not defined."
+            )
+
+        stack.merge_stack(
+            invalidator.create_resources(appresources).with_prefixed_names(
+                "Invalidate" + clean_logical_name(appname)
+            )
+        )
+
+
+def _get_invalidated_resources(appconfig: dict) -> Dict[str, List[Resource]]:
+    """Lookup which applications are associated with resources.
+
+    Returns:
+        A dictionary of {application_name: [cfn_resource]}
+    """
+    result = dict()
+
+    for key, value in appconfig.items():
+        if isinstance(key, InvalidatingConfigKey):
+            for appname in key.invalidated_applications:
+                result.setdefault(appname, []).extend(key.dependent_resources)
+        if isinstance(value, dict):
+            for appname, appresources in _get_invalidated_resources(value).items():
+                result.setdefault(appname, []).extend(appresources)
+
+    return result
 
 
 def _initialise_stack(description: str) -> Stack:
@@ -252,7 +308,7 @@ def _initialise_stack(description: str) -> Stack:
 
 def _load_appconfig_from_yaml(input) -> dict:
     """Load a YAML description of the application configuration"""
-    appconfig = yaml.safe_load(input)
+    appconfig = yaml.load(input, SsmashYamlLoader)
 
     # Note that PyYAML returns None for an empty file, rather than an empty
     # dictionary
