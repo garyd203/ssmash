@@ -28,6 +28,13 @@ deployments. You specify hierarchical configuration values in a simple YAML
 file, and ``ssmash`` will turn that into an AWS CloudFormation file that
 stores your configuration values in the SSM Parameter Store.
 
+`ssmash` is mainly intended for application developers who are at least partly
+involved in the deployment and operations of their applications. If you want
+to externalise (some of) the runtime configuration of your application, this
+is a simple and cheap solution. If you also want to be able to automatically
+restart your application when it's configuration changes, then this **is**
+the tool for you
+
 Installation
 ------------
 
