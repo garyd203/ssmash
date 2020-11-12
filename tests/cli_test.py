@@ -53,6 +53,23 @@ class TestBasicCLI:
         assert result.exit_code == 0
         assert not result.stderr_bytes
 
+    def test_should_convert_simple_input(self):
+        # Exercise
+        runner = CliRunner()
+        with Patchers.write_cfn_template() as write_mock:
+            result = runner.invoke(cli.run_ssmash, input=SIMPLE_INPUT)
+
+        # Verify
+        assert result.exit_code == 0
+        assert not result.stderr_bytes
+
+        write_mock.assert_called_once()
+        actual_stack = write_mock.call_args[0][2]
+
+        assert sorted(actual_stack.Resources.keys()) == ["SSMParamFoo"]
+        assert actual_stack.Resources["SSMParamFoo"].Properties.Name == "/foo"
+        assert actual_stack.Resources["SSMParamFoo"].Properties.Value == "bar"
+
 
 class TestCloudFormationMetadata:
     def test_stack_should_have_description(self):
@@ -155,6 +172,14 @@ class Patchers:
         with patch(
             "ssmash.loader.create_ecs_service_invalidation_stack",
             wraps=create_ecs_service_invalidation_stack,
+        ) as mocked:
+            yield mocked
+
+    @staticmethod
+    @contextmanager
+    def write_cfn_template():
+        with patch(
+            "ssmash.cli._write_cfn_template", wraps=cli._write_cfn_template
         ) as mocked:
             yield mocked
 
