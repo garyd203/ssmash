@@ -4,4 +4,4 @@
 
 __author__ = """Gary Donovan"""
 __email__ = "gazza@gazza.id.au"
-__version__ = "2.1.3-beta"
+__version__ = "2.2.0"
