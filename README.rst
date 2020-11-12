@@ -28,12 +28,13 @@ deployments. You specify hierarchical configuration values in a simple YAML
 file, and ``ssmash`` will turn that into an AWS CloudFormation file that
 stores your configuration values in the SSM Parameter Store.
 
-`ssmash` is mainly intended for application developers who are at least partly
+``ssmash`` is mainly intended for application developers who are at least partly
 involved in the deployment and operations of their applications. If you want
 to externalise (some of) the runtime configuration of your application, this
 is a simple and cheap solution. If you also want to be able to automatically
 restart your application when it's configuration changes, then this **is**
 the tool for you
+
 
 Installation
 ------------
@@ -53,6 +54,7 @@ that too, if you haven't already:
 
    $ pip install awscli
    $ aws configure
+
 
 Example
 -------
@@ -149,3 +151,94 @@ You can also refer to the name of a `CloudFormation Export
 instead of using the name directly, using the interchangeable command line
 parameters for ``--function-import`` and ``--role-import``.
 
+
+Advanced: Automated Restarts For Only Some Parameters
+-----------------------------------------------------
+
+Automated application restarts are great, but they don't scale when you have
+a single configuration file that is used by multiple applications - you don't
+want to restartevery application every time one of the config values changes.
+Happily, ``ssmash`` can handle that too - you just need to invoke the magic
+(madness!) of YAML tags, which allow us to add metadata to any part of the
+configuration hierarchy (either leaf configuration values, or tree nodes).
+
+First, let's extend the above example to include configuration for another
+application:
+
+.. code-block:: yaml
+
+    acme:
+        common:
+            enable-slapstick: true
+            region: us-west-2
+        shipping-labels-service:
+            enable-fast-delivery: true
+            explosive-purchase-limit: 1000
+            greeting: hello world
+            whitelist-users:
+                - coyote
+                - roadrunner
+        warehouse-service:
+            item-substitutes:
+                birdseed: "iron pellets"
+                parachute: "backpack"
+
+Now we add a special ``.ssmash-config`` key to tell ``ssmash`` how to restart
+our applications. Then we annotate the configuration hierarchy using custom
+YAML tags to tell ``ssmash`` which applications are invalidated by which parts
+of the configuration hierarchy:
+
+.. code-block:: yaml
+
+    ---
+    .ssmash-config:
+        invalidations:
+            # The dictionary key here ("shipping-labels") is used in the
+            # configuration hierarchy to refer to this application
+            shipping-labels: !ecs-invalidation
+                # The `!ecs-invalidation` tag tells ssmash that this application
+                # uses ECS, and the configuration fields correspond to those used
+                # on the command line
+                cluster_name: acme-prod-cluster
+                service_name: shipping-label-service
+                role_name: arn:aws:iam::123456789012:role/acme-ecs-admin
+            warehousing: !ecs-invalidation
+                cluster_name: acme-prod-cluster
+                service_name: warehouse-service
+                role_name: arn:aws:iam::123456789012:role/acme-ecs-admin
+    acme:
+        common:
+            # This is a single leaf configuration value called "enable-slapstick",
+            # which will cause both applications to restart when it is changed
+            ? !item { invalidates: [ shipping-labels, warehousing ], key: enable-slapstick }
+            : true
+            region: us-west-2
+        # This is a tree node called "shipping-labels-service", which will cause
+        # the "shipping-labels" application defined above to restart when any of
+        # it's configuration values are changed
+        ? !item { invalidates: [ shipping-labels ], key: shipping-labels-service }
+        :
+            enable-fast-delivery: true
+            explosive-purchase-limit: 1000
+            greeting: hello world
+            whitelist-users:
+                - coyote
+                - roadrunner
+        # This is a tree node called "warehouse-service", which will cause
+        # the "warehousing" application defined above to restart when any of
+        # it's configuration values are changed
+        ? !item { invalidates: [ warehousing ], key: warehouse-service }
+        :
+            item-substitutes:
+                birdseed: "iron pellets"
+                parachute: "backpack"
+
+
+Then run ``ssmash`` normally:
+
+.. code-block:: console
+
+    $ ssmash -i acme_prod_config.yaml -o cloud_formation_template.yaml
+    $ aws cloudformation deploy \
+        --stack-name "acme-prod-config" --template-file cloud_formation_template.yaml \
+        --no-fail-on-empty-changeset
