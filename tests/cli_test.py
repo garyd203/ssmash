@@ -1,5 +1,6 @@
 """Tests for the command line interface."""
 
+import os.path
 import re
 from contextlib import contextmanager
 from datetime import datetime
@@ -184,6 +185,31 @@ class TestCloudFormationIsProduced:
             with open(output_filename, "r") as f:
                 actual_output = f.read()
             assert SIMPLE_OUTPUT_LINE in actual_output
+
+
+class TestPublishedExamples:
+    @pytest.mark.parametrize(
+        "filename",
+        [
+            "readme-example-basic.yaml",
+            "readme-example-internal-invalidation.yaml",
+            "readme-example-multiple-services.yaml",
+        ],
+    )
+    def test_should_succeed(self, filename):
+        # Setup
+        path = os.path.join(os.path.dirname(__file__), "testdata", filename)
+        with open(path) as fp:
+            config_yaml = fp.read()
+
+        # Exercise
+        runner = CliRunner()
+        result = runner.invoke(cli.run_ssmash, input=config_yaml)
+
+        # Verify
+        assert result.exit_code == 0
+        assert not result.stderr_bytes
+        assert "SSMParam" in result.stdout
 
 
 class TestEcsServiceInvalidation:

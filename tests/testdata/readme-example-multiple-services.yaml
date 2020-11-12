@@ -1,0 +1,15 @@
+acme:
+    common:
+        enable-slapstick: true
+        region: us-west-2
+    shipping-labels-service:
+        enable-fast-delivery: true
+        explosive-purchase-limit: 1000
+        greeting: hello world
+        whitelist-users:
+            - coyote
+            - roadrunner
+    warehouse-service:
+        item-substitutes:
+            birdseed: "iron pellets"
+            parachute: "backpack"
