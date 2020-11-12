@@ -24,6 +24,42 @@ SIMPLE_INPUT = """foo: bar"""
 SIMPLE_OUTPUT_LINE = "Name: /foo"
 
 
+class Patchers:
+    """Collection of helpers to patch ssmash internal functions.
+
+    Note that we usually have to patch the object imported into the `cli`
+    module, not the original function definition in the `invalidation` module
+    """
+
+    @staticmethod
+    @contextmanager
+    def create_lambda_invalidation_stack():
+        with patch(
+            "ssmash.cli.create_lambda_invalidation_stack",
+            wraps=create_lambda_invalidation_stack,
+        ) as mocked:
+            yield mocked
+
+    @staticmethod
+    @contextmanager
+    def create_ecs_service_invalidation_stack():
+        # Note that we patch the object imported into the `loader` module, not
+        # the original function definition in the `invalidation` module
+        with patch(
+            "ssmash.loader.create_ecs_service_invalidation_stack",
+            wraps=create_ecs_service_invalidation_stack,
+        ) as mocked:
+            yield mocked
+
+    @staticmethod
+    @contextmanager
+    def write_cfn_template():
+        with patch(
+            "ssmash.cli._write_cfn_template", wraps=cli._write_cfn_template
+        ) as mocked:
+            yield mocked
+
+
 class TestBasicCLI:
     def test_should_display_help(self):
         runner = CliRunner()
@@ -148,42 +184,6 @@ class TestCloudFormationIsProduced:
             with open(output_filename, "r") as f:
                 actual_output = f.read()
             assert SIMPLE_OUTPUT_LINE in actual_output
-
-
-class Patchers:
-    """Collection of helpers to patch ssmash internal functions.
-
-    Note that we usually have to patch the object imported into the `cli`
-    module, not the original function definition in the `invalidation` module
-    """
-
-    @staticmethod
-    @contextmanager
-    def create_lambda_invalidation_stack():
-        with patch(
-            "ssmash.cli.create_lambda_invalidation_stack",
-            wraps=create_lambda_invalidation_stack,
-        ) as mocked:
-            yield mocked
-
-    @staticmethod
-    @contextmanager
-    def create_ecs_service_invalidation_stack():
-        # Note that we patch the object imported into the `loader` module, not
-        # the original function definition in the `invalidation` module
-        with patch(
-            "ssmash.loader.create_ecs_service_invalidation_stack",
-            wraps=create_ecs_service_invalidation_stack,
-        ) as mocked:
-            yield mocked
-
-    @staticmethod
-    @contextmanager
-    def write_cfn_template():
-        with patch(
-            "ssmash.cli._write_cfn_template", wraps=cli._write_cfn_template
-        ) as mocked:
-            yield mocked
 
 
 class TestEcsServiceInvalidation:
