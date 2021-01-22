@@ -23,7 +23,7 @@ ssmash
         :alt: Code style: black
 
 `ssmash <https://ssmash.readthedocs.io>`_, the SSM AppConfig Storage Helper,
-is an easy-to-use application configuration management tool for AWS
+ is an easy-to-use application configuration management tool for AWS
 deployments. You specify hierarchical configuration values in a simple YAML
 file, and ``ssmash`` will turn that into an AWS CloudFormation file that
 stores your configuration values in the SSM Parameter Store.
